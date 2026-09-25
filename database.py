@@ -22,7 +22,7 @@ def init_db():
     with get_db_connection() as conn:
         cursor = conn.cursor()
         
-        # Tabela unificada contendo o local de coleta
+        # 1. Tabela unificada contendo o local de coleta
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS registros (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,34 +43,41 @@ def init_db():
             )
         ''')
         
-        # Migração defensiva: adiciona coluna local caso banco antigo exista
+        # Migração defensiva para tabela 'registros'
         cursor.execute("PRAGMA table_info(registros)")
-        colunas = [col[1] for col in cursor.fetchall()]
-        if 'local' not in colunas:
+        colunas_reg = [col[1] for col in cursor.fetchall()]
+        if 'local' not in colunas_reg:
             cursor.execute("ALTER TABLE registros ADD COLUMN local TEXT NOT NULL DEFAULT 'Geral'")
-        if 'pressao_vapor' not in colunas:
+        if 'pressao_vapor' not in colunas_reg:
             cursor.execute("ALTER TABLE registros ADD COLUMN pressao_vapor REAL NOT NULL DEFAULT 0.0")
-        if 'umidade_absoluta' not in colunas:
+        if 'umidade_absoluta' not in colunas_reg:
             cursor.execute("ALTER TABLE registros ADD COLUMN umidade_absoluta REAL NOT NULL DEFAULT 0.0")
-        if 'entalpia' not in colunas:
+        if 'entalpia' not in colunas_reg:
             cursor.execute("ALTER TABLE registros ADD COLUMN entalpia REAL NOT NULL DEFAULT 0.0")
-        if 'indice_thom' not in colunas:
+        if 'indice_thom' not in colunas_reg:
             cursor.execute("ALTER TABLE registros ADD COLUMN indice_thom REAL NOT NULL DEFAULT 0.0")
 
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_timestamp ON registros(timestamp)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_local ON registros(local)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_esp_seq ON registros(esp_seq)')
         
+        # 2. Tabela de histórico de sincronização
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS sync_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 executado_em TEXT NOT NULL,
-                local TEXT NOT NULL,
+                local TEXT NOT NULL DEFAULT 'Geral',
                 registros_baixados INTEGER NOT NULL,
                 status TEXT NOT NULL,
                 mensagem TEXT
             )
         ''')
+        
+        # Migração defensiva para tabela 'sync_history' (Resolve o OperationalError)
+        cursor.execute("PRAGMA table_info(sync_history)")
+        colunas_sync = [col[1] for col in cursor.fetchall()]
+        if 'local' not in colunas_sync:
+            cursor.execute("ALTER TABLE sync_history ADD COLUMN local TEXT NOT NULL DEFAULT 'Geral'")
         
         conn.commit()
 
@@ -114,7 +121,7 @@ def obter_locais_unicos():
 def excluir_registros(data_inicio=None, data_fim=None, hora_inicio=None, hora_fim=None, local=None):
     """
     Exclui registros com base nos critérios de data, hora e local.
-    Se nenhum parâmetro for fornecido, executa limpeza completa (TRUNCATE).
+    Se nenhum parâmetro for fornecido, executa limpeza completa.
     """
     query = "DELETE FROM registros WHERE 1=1"
     params = []
@@ -141,7 +148,6 @@ def excluir_registros(data_inicio=None, data_fim=None, hora_inicio=None, hora_fi
         deletados = cursor.rowcount
         conn.commit()
         
-        # Se esvaziou a tabela, reseta auto-incremento
         cursor.execute("SELECT COUNT(*) FROM registros")
         restantes = cursor.fetchone()[0]
         if restantes == 0:
