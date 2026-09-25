@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projeto Estação Ambiental Atalaia - O vigilante</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <!-- BARRA LATERAL -->
+    <aside class="sidebar">
+      <div class="brand">
+        <h2>ATALAIA</h2>
+        <span class="subbrand">O VIGILANTE</span>
+      </div>
+      <div class="author-info">
+        Desenvolvido e Arquetipado por<br>
+        <strong>Philipe Sampaio</strong><br>
+        <span class="github-handle">github @oldboy</span>
+      </div>
+
+      <nav class="nav-links">
+        <a href="#geral" class="nav-item active">Visão Geral</a>
+        <a href="#temperatura" class="nav-item">Temperatura</a>
+        <a href="#umidade" class="nav-item">Umidade</a>
+        <a href="#psicrometria" class="nav-item">Psicrometria & Bioclima</a>
+        <a href="#bivariada" class="nav-item">Correlação & Dispersão</a>
+        <a href="#regressao" class="nav-item">Regressão & Tendência</a>
+        <a href="#distribuicao" class="nav-item">Distribuições & Boxplots</a>
+        <a href="#derivados" class="nav-item">Ponto de Orvalho & Calor</a>
+        <a href="#brutos" class="nav-item">Registros Brutos</a>
+      </nav>
+
+      <!-- PAINEL DE SINCRONIZAÇÃO COM ESPECIFICAÇÃO DE LOCAL -->
+      <div class="sync-panel">
+        <h4>Sincronização ESP32</h4>
+        <div class="status-indicator">
+          <span id="esp-status-dot" class="dot offline"></span>
+          <span id="esp-status-text">ESP32 Offline</span>
+        </div>
+        <p class="sync-sub">Pendentes no buffer: <strong id="esp-pending-val">0</strong></p>
+
+        <div class="input-sync-group">
+          <label for="sync-local-input">Local da Coleta:</label>
+          <input type="text" id="sync-local-input" placeholder="Ex: Laboratório 01" value="Sede Principal">
+        </div>
+
+        <button id="btn-sync" class="btn btn-sync">SINCRONIZAR ESP32</button>
+        <div id="sync-msg" class="sync-msg"></div>
+      </div>
+
+      <!-- PAINEL DE GESTÃO E EXCLUSÃO DE REGISTROS -->
+      <div class="delete-panel">
+        <h4>Gestão de Dados</h4>
+        <button id="btn-excluir-filtrados" class="btn btn-danger-outline">Excluir Filtrados</button>
+        <button id="btn-limpar-tudo" class="btn btn-danger">Limpar Banco Completo</button>
+        <div id="delete-msg" class="sync-msg"></div>
+      </div>
+    </aside>
+
+    <!-- ÁREA PRINCIPAL -->
+    <main class="main-content">
+      <!-- FILTROS TRI-DIMENSIONAIS DINÂMICOS -->
+      <header class="topbar">
+        <div class="filter-dashboard-container">
+          <div class="filter-col">
+            <span class="filter-label">Intervalo de Data:</span>
+            <div class="filter-inline">
+              <input type="date" id="filtro-data-inicio" title="Data Inicial">
+              <span>até</span>
+              <input type="date" id="filtro-data-fim" title="Data Final">
+            </div>
+          </div>
+
+          <div class="filter-col">
+            <span class="filter-label">Intervalo de Horário:</span>
+            <div class="filter-inline">
+              <input type="time" id="filtro-hora-inicio" step="1" title="Hora Inicial">
+              <span>até</span>
+              <input type="time" id="filtro-hora-fim" step="1" title="Hora Final">
+            </div>
+          </div>
+
+          <div class="filter-col">
+            <span class="filter-label">Local Físico:</span>
+            <select id="filtro-local">
+              <option value="TODOS">Todos os Locais</option>
+            </select>
+          </div>
+
+          <div class="filter-actions">
+            <button id="btn-filtrar" class="btn btn-primary">Aplicar Filtros</button>
+            <button id="btn-limpar-filtro" class="btn btn-secondary">Limpar</button>
+          </div>
+        </div>
+
+        <div class="export-group">
+          <a href="/api/exportar/csv" id="exp-csv" class="btn btn-outline">CSV</a>
+          <a href="/api/exportar/excel" id="exp-xlsx" class="btn btn-outline">Excel</a>
+          <a href="/api/exportar/db" class="btn btn-outline">Banco .db</a>
+        </div>
+      </header>
+
+      <!-- VISÃO GERAL -->
+      <section id="geral" class="dashboard-section">
+        <div class="section-title">
+          <h3>Visão Geral do Monitoramento</h3>
+          <span class="refresh-indicator" id="refresh-indicator-text">Atualização automática ativa</span>
+        </div>
+
+        <div class="cards-grid">
+          <div class="card stat-card border-temp">
+            <span class="card-label">Temperatura Atual</span>
+            <span class="card-number" id="card-temp-atual">-- °C</span>
+            <div class="card-footer">Média: <span id="card-temp-media">--</span> °C | Mín: <span id="card-temp-min">--</span> | Máx: <span id="card-temp-max">--</span></div>
+          </div>
+          <div class="card stat-card border-hum">
+            <span class="card-label">Umidade Relativa Atual</span>
+            <span class="card-number" id="card-hum-atual">-- %</span>
+            <div class="card-footer">Média: <span id="card-hum-media">--</span> % | Mín: <span id="card-hum-min">--</span> | Máx: <span id="card-hum-max">--</span></div>
+          </div>
+          <div class="card stat-card border-dp">
+            <span class="card-label">Ponto de Orvalho Atual</span>
+            <span class="card-number" id="card-dp-atual">-- °C</span>
+            <div class="card-footer">Equação de Magnus-Tetens (&alpha; Alduchov)</div>
+          </div>
+          <div class="card stat-card border-hi">
+            <span class="card-label">Sensação Térmica (Heat Index)</span>
+            <span class="card-number" id="card-hi-atual">-- °C</span>
+            <div class="card-footer">Regressão Rothfusz / Steadman (NOAA)</div>
+          </div>
+          <div class="card stat-card">
+            <span class="card-label">Amostras Filtradas</span>
+            <span class="card-number" id="card-total-registros">0</span>
+            <div class="card-footer">Tempo Ativo: <span id="card-tempo-total">0 min</span></div>
+          </div>
+          <div class="card stat-card">
+            <span class="card-label">Correlação Pearson (T &times; U)</span>
+            <span class="card-number" id="card-correlacao">--</span>
+            <div class="card-footer">Covariância: <span id="card-covariancia">--</span></div>
+          </div>
+        </div>
+
+        <div class="charts-row">
+          <div class="chart-container" id="chart-temp-hum-tempo"></div>
+        </div>
+      </section>
+
+      <!-- TEMPERATURA -->
+      <section id="temperatura" class="dashboard-section">
+        <div class="section-title"><h3>Análise Univariada: Temperatura (°C)</h3></div>
+        <div class="stats-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Média</th><th>Mediana</th><th>Moda</th><th>Mínimo</th><th>Máximo</th><th>Amplitude</th>
+                <th>Desv. Padrão</th><th>Variância</th><th>MAD (Desv. Mediana)</th><th>CV (%)</th><th>IQR</th><th>Assimetria</th><th>Curtose</th><th>Taxa (&Delta;T/h)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td id="t-med">--</td><td id="t-mediana">--</td><td id="t-moda">--</td><td id="t-min">--</td><td id="t-max">--</td><td id="t-amp">--</td>
+                <td id="t-std">--</td><td id="t-var">--</td><td id="t-mad">--</td><td id="t-cv">--%</td><td id="t-iqr">--</td><td id="t-assim">--</td><td id="t-curt">--</td><td id="t-rate">--</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="charts-row-split">
+          <div class="chart-container-half" id="chart-temp-tempo"></div>
+          <div class="chart-container-half" id="chart-temp-ma"></div>
+        </div>
+      </section>
+
+      <!-- UMIDADE -->
+      <section id="umidade" class="dashboard-section">
+        <div class="section-title"><h3>Análise Univariada: Umidade Relativa (%)</h3></div>
+        <div class="stats-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Média</th><th>Mediana</th><th>Moda</th><th>Mínimo</th><th>Máximo</th><th>Amplitude</th>
+                <th>Desv. Padrão</th><th>Variância</th><th>MAD (Desv. Mediana)</th><th>CV (%)</th><th>IQR</th><th>Assimetria</th><th>Curtose</th><th>Taxa (&Delta;RH/h)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td id="h-med">--</td><td id="h-mediana">--</td><td id="h-moda">--</td><td id="h-min">--</td><td id="h-max">--</td><td id="h-amp">--</td>
+                <td id="h-std">--</td><td id="h-var">--</td><td id="h-mad">--</td><td id="h-cv">--%</td><td id="h-iqr">--</td><td id="h-assim">--</td><td id="h-curt">--</td><td id="h-rate">--</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="charts-row-split">
+          <div class="chart-container-half" id="chart-hum-tempo"></div>
+          <div class="chart-container-half" id="chart-hum-ma"></div>
+        </div>
+      </section>
+
+      <!-- PSICROMETRIA AVANÇADA & BIOCLIMÁTICA -->
+      <section id="psicrometria" class="dashboard-section">
+        <div class="section-title"><h3>Psicrometria Avançada & Conforto Bioclimático</h3></div>
+        <div class="cards-grid">
+          <div class="card stat-card">
+            <span class="card-label">Pressão Parcial de Vapor</span>
+            <span class="card-number" id="card-vp-atual">-- hPa</span>
+            <div class="card-footer">Fórmula Tetens | Média: <span id="card-vp-media">--</span> hPa</div>
+          </div>
+          <div class="card stat-card">
+            <span class="card-label">Umidade Absoluta</span>
+            <span class="card-number" id="card-ah-atual">-- g/m³</span>
+            <div class="card-footer">Densidade volumétrica de vapor de água</div>
+          </div>
+          <div class="card stat-card">
+            <span class="card-label">Entalpia Específica</span>
+            <span class="card-number" id="card-ent-atual">-- kJ/kg</span>
+            <div class="card-footer">Energia térmica contida na mistura gasosa</div>
+          </div>
+          <div class="card stat-card">
+            <span class="card-label">Índice de Thom (DI)</span>
+            <span class="card-number" id="card-thom-atual">--</span>
+            <div class="card-footer" id="card-thom-class">--</div>
+          </div>
+        </div>
+        <div class="charts-row-split">
+          <div class="chart-container-half" id="chart-ah-tempo"></div>
+          <div class="chart-container-half" id="chart-thom-tempo"></div>
+        </div>
+      </section>
+
+      <!-- CORRELAÇÃO & REGRESSÃO -->
+      <section id="bivariada" class="dashboard-section">
+        <div class="section-title"><h3>Relação Bivariada e Regressão Linear</h3></div>
+        <div class="cards-grid">
+          <div class="card">
+            <h4>Regressão Linear: Temperatura &times; Tempo</h4>
+            <p><strong>Equação:</strong> <span id="reg-t-eq">--</span></p>
+            <p><strong>Coef. Angular:</strong> <span id="reg-t-angular">--</span> | <strong>R²:</strong> <span id="reg-t-r2">--</span></p>
+            <p><strong>Tendência:</strong> <span id="reg-t-tend">--</span></p>
+            <small class="text-muted">Ajuste OLS calculado dinamicamente sobre o filtro ativo.</small>
+          </div>
+          <div class="card">
+            <h4>Regressão Linear: Umidade &times; Tempo</h4>
+            <p><strong>Equação:</strong> <span id="reg-h-eq">--</span></p>
+            <p><strong>Coef. Angular:</strong> <span id="reg-h-angular">--</span> | <strong>R²:</strong> <span id="reg-h-r2">--</span></p>
+            <p><strong>Tendência:</strong> <span id="reg-h-tend">--</span></p>
+            <small class="text-muted">Ajuste OLS calculado dinamicamente sobre o filtro ativo.</small>
+          </div>
+        </div>
+        <div class="charts-row-split">
+          <div class="chart-container-half" id="chart-dispersao"></div>
+          <div class="chart-container-half" id="chart-regressoes-comparadas"></div>
+        </div>
+      </section>
+
+      <!-- DISTRIBUIÇÃO E DENSIDADE -->
+      <section id="distribuicao" class="dashboard-section">
+        <div class="section-title"><h3>Distribuição de Frequências e Boxplots</h3></div>
+        <div class="charts-grid-2x2">
+          <div class="chart-box" id="chart-hist-temp"></div>
+          <div class="chart-box" id="chart-hist-hum"></div>
+          <div class="chart-box" id="chart-box-temp"></div>
+          <div class="chart-box" id="chart-box-hum"></div>
+        </div>
+      </section>
+
+      <!-- PONTO DE ORVALHO & SENSAÇÃO -->
+      <section id="derivados" class="dashboard-section">
+        <div class="section-title"><h3>Fórmulas Meteorológicas e Indicadores Físicos</h3></div>
+        <div class="cards-grid">
+          <div class="card">
+            <h4>Ponto de Orvalho (Dew Point)</h4>
+            <p>Temperatura de saturação do vapor d'água no ar.</p>
+            <pre class="formula-box">&alpha;(T, RH) = (17.27 &middot; T)/(237.7 + T) + ln(RH/100)
+T_dp = (237.7 &middot; &alpha;) / (17.27 - &alpha;)</pre>
+            <p><strong>Diferença T - T_dp:</strong> <span id="ind-delta-orvalho">--</span> °C</p>
+          </div>
+          <div class="card">
+            <h4>Sensação Térmica (Heat Index)</h4>
+            <p>Efeito aparente combinado de temperatura e umidade relativa.</p>
+            <pre class="formula-box">HI = -42.379 + 2.049&middot;T + 10.143&middot;RH - 0.224&middot;T&middot;RH
+- 0.0068&middot;T² - 0.054&middot;RH² + 0.0012&middot;T²&middot;RH ...</pre>
+            <p><strong>Razão Amplitudes (T / U):</strong> <span id="ind-razao-amp">--</span></p>
+          </div>
+        </div>
+        <div class="charts-row-split">
+          <div class="chart-container-half" id="chart-orvalho-tempo"></div>
+          <div class="chart-container-half" id="chart-sensacao-tempo"></div>
+        </div>
+      </section>
+
+      <!-- TABELA BRUTA -->
+      <section id="brutos" class="dashboard-section">
+        <div class="section-title"><h3>Registros Históricos (Últimos Registros Filtrados)</h3></div>
+        <div class="table-container">
+          <table class="data-table" id="tabela-brutos">
+            <thead>
+              <tr>
+                <th>ESP Seq</th>
+                <th>Local</th>
+                <th>Timestamp Estimado</th>
+                <th>Temperatura (°C)</th>
+                <th>Umidade (%)</th>
+                <th>Ponto Orvalho (°C)</th>
+                <th>Sensação (°C)</th>
+                <th>Umidade Abs. (g/m³)</th>
+                <th>Índice Thom</th>
+                <th>Intervalo</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
