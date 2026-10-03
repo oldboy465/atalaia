@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% block title %}Mapa Espacial de Coletas{% endblock %}
+
+{% block content %}
+<div class="glass-card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+      <h2 style="font-size: 1.3rem; font-weight: 700;">Módulo de Georreferenciamento de Amostras</h2>
+      <p style="font-size: 0.8rem; color: var(--text-muted);">Mapeamento espacial das coletas e visualização de calor ambiental</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn btn-outline" onclick="centerMapOnPoints()">Centralizar Amostras</button>
+    </div>
+  </div>
+
+  <!-- Cards de Resumo Geográfico -->
+  <div class="grid-metrics">
+    <div class="metric-box">
+      <div class="metric-box-title">Locais Mapeados</div>
+      <div class="metric-box-val" id="mapTotalLocais">{{ locais|length }}</div>
+    </div>
+    <div class="metric-box">
+      <div class="metric-box-title">Ponto Mais Quente</div>
+      <div class="metric-box-val" id="mapHottestPoint">--<span> °C</span></div>
+    </div>
+    <div class="metric-box">
+      <div class="metric-box-title">Ponto Mais Úmido</div>
+      <div class="metric-box-val" id="mapHumidPoint">--<span> %</span></div>
+    </div>
+    <div class="metric-box">
+      <div class="metric-box-title">Sensação Térmica Média</div>
+      <div class="metric-box-val" id="mapAvgHI">--<span> °C</span></div>
+    </div>
+  </div>
+
+  <!-- Container do Leaflet Map -->
+  <div style="border-radius: 12px; overflow: hidden; border: 1px solid var(--border-subtle); box-shadow: var(--shadow-sm); position: relative;">
+    <div id="atalaiaMap" style="height: 540px; width: 100%; z-index: 1;"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let map = null;
+let markersGroup = null;
+
+// Dados injetados pelo backend
+const locaisGeo = {{ locais | tojson }};
+
+function initMap() {
+  // Inicialização padrão com centro em São Luís - MA
+  map = L.map('atalaiaMap').setView([-2.5307, -44.3068], 12);
+
+  // CartoDB Positron: Tema Claro, moderno, vetorizado e limpo
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://carto.com/">CartoDB</a> OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(map);
+
+  markersGroup = L.featureGroup().addTo(map);
+  renderLocations();
+}
+
+function renderLocations() {
+  let validPoints = 0;
+  let maxTemp = -999;
+  let hottestName = '--';
+  let maxHum = -999;
+  let humidName = '--';
+  let totalHI = 0;
+  let hiCount = 0;
+
+  locaisGeo.forEach(loc => {
+    if (loc.latitude && loc.longitude) {
+      validPoints++;
+
+      // Atualiza agregações
+      if (loc.media_temp !== null && loc.media_temp > maxTemp) {
+        maxTemp = loc.media_temp;
+        hottestName = `${loc.nome} (${loc.media_temp}°C)`;
+      }
+      if (loc.media_umid !== null && loc.media_umid > maxHum) {
+        maxHum = loc.media_umid;
+        humidName = `${loc.nome} (${loc.media_umid}%)`;
+      }
+      if (loc.media_sensacao !== null) {
+        totalHI += loc.media_sensacao;
+        hiCount++;
+      }
+
+      // Estilo do Marcador de Círculo com Pulso Térmico
+      const color = (loc.media_temp >= 32) ? '#e11d48' : '#0284c7';
+      
+      const circle = L.circleMarker([loc.latitude, loc.longitude], {
+        radius: 12,
+        fillColor: color,
+        color: '#ffffff',
+        weight: 3,
+        opacity: 1,
+        fillOpacity: 0.85
+      });
+
+      // Halo de calor em volta
+      const halo = L.circle([loc.latitude, loc.longitude], {
+        radius: 180,
+        fillColor: color,
+        color: 'transparent',
+        fillOpacity: 0.18
+      });
+
+      const popupContent = `
+        <div style="font-family: inherit; font-size: 0.85rem; padding: 4px;">
+          <h4 style="font-weight: 700; color: #0f172a; margin-bottom: 4px;">${loc.nome}</h4>
+          <p style="font-size: 0.75rem; color: #64748b; margin-bottom: 8px;">${loc.descricao || 'Sem descrição'}</p>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.8rem;">
+            <div><strong>Temp Média:</strong> <span style="color:#0284c7;">${loc.media_temp || '--'} °C</span></div>
+            <div><strong>Umid Média:</strong> <span style="color:#059669;">${loc.media_umid || '--'} %</span></div>
+            <div><strong>Sensação:</strong> ${loc.media_sensacao || '--'} °C</div>
+            <div><strong>Amostras:</strong> ${loc.total_coletas}</div>
+          </div>
+          <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 6px;">
+            Última coleta: ${loc.ultima_coleta || 'N/A'}
+          </div>
+        </div>
+      `;
+
+      circle.bindPopup(popupContent);
+      markersGroup.addLayer(halo);
+      markersGroup.addLayer(circle);
+    }
+  });
+
+  // Atualiza cartões de métricas do topo
+  document.getElementById('mapHottestPoint').innerText = maxTemp > -999 ? `${maxTemp}°C` : '--';
+  document.getElementById('mapHumidPoint').innerText = maxHum > -999 ? `${maxHum}%` : '--';
+  document.getElementById('mapAvgHI').innerText = hiCount > 0 ? `${(totalHI / hiCount).toFixed(1)}°C` : '--';
+
+  if (validPoints > 0) {
+    map.fitBounds(markersGroup.getBounds(), { padding: [50, 50] });
+  }
+}
+
+function centerMapOnPoints() {
+  if (markersGroup && markersGroup.getLayers().length > 0) {
+    map.fitBounds(markersGroup.getBounds(), { padding: [50, 50] });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initMap);
+</script>
+{% endblock %}

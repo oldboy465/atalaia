@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Atalaia v1{% endblock %} - Monitoramento & Telemetria</title>
+  
+  <!-- CSS e Bibliotecas Visuais -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  
+  <!-- Leaflet Maps CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body>
+
+  <!-- Topbar Global Fixa -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-logo">A1</div>
+      <div>
+        <h1 class="brand-title">Projeto Atalaia <span class="brand-version">v1.0</span></h1>
+        <p class="brand-sub">Nó Sensorial & Análise Psicrométrica</p>
+      </div>
+    </div>
+
+    <!-- Navegação entre Módulos -->
+    <nav class="nav-links">
+      <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">Atmosfera</a>
+      <a href="{{ url_for('main.analytics') }}" class="nav-link {% if request.endpoint == 'main.analytics' %}active{% endif %}">Análise & ML</a>
+      <a href="{{ url_for('main.data_management') }}" class="nav-link {% if request.endpoint == 'main.data_management' %}active{% endif %}">Gestão de Dados</a>
+      <a href="{{ url_for('main.map_view') }}" class="nav-link {% if request.endpoint == 'main.map_view' %}active{% endif %}">Mapa Espacial</a>
+    </nav>
+
+    <!-- Indicador de Status & Controles ESP32 -->
+    <div class="topbar-actions">
+      <div class="status-indicator">
+        <span class="status-dot offline" id="espDot"></span>
+        <span class="status-text" id="espStatusText">ESP32: Verificando...</span>
+      </div>
+
+      <button id="btnConnect" class="btn btn-outline" onclick="checkESPStatus()">Verificar Conexão</button>
+      <button id="btnExtractModal" class="btn btn-primary" onclick="openExtractModal()">Extrair Dados</button>
+      <button id="btnShutdown" class="btn btn-danger" onclick="triggerShutdown()">Desligar Nó</button>
+    </div>
+  </header>
+
+  <!-- Modal de Extração e Vínculo de Local -->
+  <div id="extractModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Extração de Dados do Buffer (Capacidade: 7200)</h3>
+        <button class="modal-close" onclick="closeExtractModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Vincule o lote de medições descarregado a um local físico:</p>
+        
+        <div class="form-group">
+          <label for="modalLocalSelect">Selecionar Local Existente:</label>
+          <select id="modalLocalSelect" class="form-control" onchange="handleModalLocalChange()">
+            <option value="">-- Cadastrar Novo Local --</option>
+            {% for l in locais %}
+            <option value="{{ l.nome }}" data-lat="{{ l.latitude or '' }}" data-lng="{{ l.longitude or '' }}">{{ l.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="modalLocalNome">Nome do Local:</label>
+          <input type="text" id="modalLocalNome" class="form-control" placeholder="Ex: Laboratório de Pesquisa">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label for="modalLocalLat">Latitude:</label>
+            <input type="number" step="any" id="modalLocalLat" class="form-control" placeholder="Ex: -2.5307">
+          </div>
+          <div class="form-group">
+            <label for="modalLocalLng">Longitude:</label>
+            <input type="number" step="any" id="modalLocalLng" class="form-control" placeholder="Ex: -44.3068">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="modalLocalDesc">Descrição / Observações (Opcional):</label>
+          <textarea id="modalLocalDesc" class="form-control" rows="2" placeholder="Ex: Perto do banco de baterias"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeExtractModal()">Cancelar</button>
+        <button id="btnConfirmExtract" class="btn btn-primary" onclick="executeExtraction()">Confirmar e Extrair</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conteúdo Principal -->
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard Atmosférico & Estatístico{% endblock %}
+
+{% block content %}
+<div class="glass-card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+      <h2 style="font-size: 1.3rem; font-weight: 700;">Módulo Atmosfera</h2>
+      <p style="font-size: 0.8rem; color: var(--text-muted);">Telemetria em tempo real, régua de umidade e análise descritiva</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <select id="filterLocal" class="form-control" style="width: 220px;" onchange="reloadAllData()">
+        <option value="">-- Todos os Locais --</option>
+        {% for l in locais %}
+        <option value="{{ l.id }}">{{ l.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <!-- Cards de Grandezas Psicrométricas -->
+  <div class="grid-metrics">
+    <div class="metric-box">
+      <div class="metric-box-title">Temperatura</div>
+      <div class="metric-box-val" id="cardTemp">--<span> °C</span></div>
+    </div>
+    <div class="metric-box">
+      <div class="metric-box-title">Umidade Relativa</div>
+      <div class="metric-box-val" id="cardHum">--<span> %</span></div>
+    </div>
+    <div class="metric-box">
+      <div class="metric-box-title">Sensação Térmica</div>
+      <div class="metric-box-val" id="cardHI">--<span> °C</span></div>
+    </div>
+    <div class="metric-box">
+      <div class="metric-box-title">Ponto de Orvalho</div>
+      <div class="metric-box-val" id="cardDP">--<span> °C</span></div>
+    </div>
+    <div class="metric-box">
+      <div class="metric-box-title">Umidade Absoluta</div>
+      <div class="metric-box-val" id="cardAH">--<span> g/m³</span></div>
+    </div>
+    <div class="metric-box">
+      <div class="metric-box-title">Pressão Vapor (Ea)</div>
+      <div class="metric-box-val" id="cardEa">--<span> hPa</span></div>
+    </div>
+  </div>
+
+  <!-- RÉGUA DINÂMICA DE PARÂMETROS DA UMIDADE DO AR -->
+  <div class="glass-card" style="padding: 16px; margin-bottom: 24px; border-left: 4px solid var(--primary);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h3 style="font-size: 0.95rem; font-weight: 700;">Parâmetros da Umidade do Ar</h3>
+      <span id="humidityStatusBadge" style="padding: 4px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; background: #e0f2fe; color: #0284c7;">Aguardando Leitura...</span>
+    </div>
+
+    <!-- Barra Visual de Níveis de Umidade -->
+    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; font-size: 0.78rem;">
+      <div id="zoneEmergencia" style="background: #fff1f2; border: 1px solid #fecdd3; padding: 10px; border-radius: 8px; text-align: center;">
+        <strong style="color: #e11d48; display: block; margin-bottom: 4px;">Emergência (&lt; 12%)</strong>
+        <p style="color: #64748b; font-size: 0.72rem;">Estado crítico. Risco extremo à saúde.</p>
+      </div>
+
+      <div id="zoneAlerta" style="background: #fff7ed; border: 1px solid #ffedd5; padding: 10px; border-radius: 8px; text-align: center;">
+        <strong style="color: #ea580c; display: block; margin-bottom: 4px;">Alerta (12% - 20%)</strong>
+        <p style="color: #64748b; font-size: 0.72rem;">Agravamento severo de problemas respiratórios.</p>
+      </div>
+
+      <div id="zoneAtencao" style="background: #fefce8; border: 1px solid #fef08a; padding: 10px; border-radius: 8px; text-align: center;">
+        <strong style="color: #ca8a04; display: block; margin-bottom: 4px;">Atenção (20% - 30%)</strong>
+        <p style="color: #64748b; font-size: 0.72rem;">Ressecamento da pele e irritação ocular.</p>
+      </div>
+
+      <div id="zoneIdeal" style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 10px; border-radius: 8px; text-align: center;">
+        <strong style="color: #059669; display: block; margin-bottom: 4px;">Ideal (40% - 60%)</strong>
+        <p style="color: #64748b; font-size: 0.72rem;">Bem-estar térmico e fisiologia respiratória ideal.</p>
+      </div>
+
+      <div id="zoneExcesso" style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 10px; border-radius: 8px; text-align: center;">
+        <strong style="color: #0284c7; display: block; margin-bottom: 4px;">Excesso (&gt; 70%)</strong>
+        <p style="color: #64748b; font-size: 0.72rem;">Prejudica suor, favorece mofo e ácaros.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gráficos Plotly -->
+  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px;">
+    <div class="glass-card" style="padding: 16px; margin-bottom: 0;">
+      <div id="chartTimeSeries" style="height: 400px;"></div>
+    </div>
+    <div class="glass-card" style="padding: 16px; margin-bottom: 0;">
+      <div id="chartHeatmap" style="height: 400px;"></div>
+    </div>
+  </div>
+
+  <!-- TABELA DE ESTATÍSTICA DESCRITIVA AVANÇADA -->
+  <div class="glass-card" style="padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+      <div>
+        <h3 style="font-size: 1.05rem; font-weight: 700;">Estatísticas Descritivas Completas</h3>
+        <p style="font-size: 0.78rem; color: var(--text-muted);">Métricas calculadas sobre a série histórica amostrada</p>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input type="date" id="statsDateStart" class="form-control" style="width: 135px;" onchange="loadDescriptiveStats()">
+        <input type="date" id="statsDateEnd" class="form-control" style="width: 135px;" onchange="loadDescriptiveStats()">
+        <button class="btn btn-outline" onclick="loadDescriptiveStats()">Filtrar</button>
+      </div>
+    </div>
+
+    <div style="overflow-x: auto; background: var(--surface-solid); border: 1px solid var(--border-subtle); border-radius: 10px;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: right;">
+        <thead>
+          <tr style="background: #f1f5f9; color: var(--text-muted); border-bottom: 1px solid var(--border-subtle);">
+            <th style="padding: 10px 12px; text-align: left;">Variável</th>
+            <th style="padding: 10px 12px;">N</th>
+            <th style="padding: 10px 12px;">Média</th>
+            <th style="padding: 10px 12px;">Mediana</th>
+            <th style="padding: 10px 12px;">Mín</th>
+            <th style="padding: 10px 12px;">Máx</th>
+            <th style="padding: 10px 12px;">Q1 (25%)</th>
+            <th style="padding: 10px 12px;">Q3 (75%)</th>
+            <th style="padding: 10px 12px;">P10</th>
+            <th style="padding: 10px 12px;">P90</th>
+            <th style="padding: 10px 12px;">DP</th>
+            <th style="padding: 10px 12px;">Var</th>
+            <th style="padding: 10px 12px;">CV (%)</th>
+            <th style="padding: 10px 12px;">IC 95%</th>
+            <th style="padding: 10px 12px;">IC 99%</th>
+          </tr>
+        </thead>
+        <tbody id="descriptiveTableBody">
+          <tr><td colspan="15" style="padding: 20px; text-align: center; color: var(--text-muted);">Carregando descritivas...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadDashboardData() {
+  const localId = document.getElementById('filterLocal').value;
+  let url = '/api/coletas?limit=250';
+  if (localId) url += `&local_id=${localId}`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data || data.length === 0) return;
+
+    const latest = data[0];
+    const humVal = Number(latest.umidade);
+
+    document.getElementById('cardTemp').innerHTML = `${Number(latest.temperatura).toFixed(1)}<span> °C</span>`;
+    document.getElementById('cardHum').innerHTML = `${humVal.toFixed(1)}<span> %</span>`;
+    document.getElementById('cardHI').innerHTML = `${Number(latest.indice_calor).toFixed(1)}<span> °C</span>`;
+    document.getElementById('cardDP').innerHTML = `${Number(latest.ponto_orvalho).toFixed(1)}<span> °C</span>`;
+    document.getElementById('cardAH').innerHTML = `${Number(latest.umidade_absoluta).toFixed(2)}<span> g/m³</span>`;
+    document.getElementById('cardEa').innerHTML = `${Number(latest.pressao_vapor_real).toFixed(2)}<span> hPa</span>`;
+
+    // Atualiza régua e badge de umidade
+    updateHumidityBadge(humVal);
+
+    // Plotly
+    const ordered = [...data].reverse();
+    const timestamps = ordered.map(d => d.coletado_em);
+    const temps = ordered.map(d => d.temperatura);
+    const hums = ordered.map(d => d.umidade);
+
+    const traceTemp = {
+      x: timestamps, y: temps, name: 'Temperatura (°C)',
+      type: 'scatter', mode: 'lines+markers',
+      line: { color: '#0284c7', width: 2.5, shape: 'spline' },
+      marker: { size: 4, color: '#0284c7' }, yaxis: 'y1'
+    };
+
+    const traceHum = {
+      x: timestamps, y: hums, name: 'Umidade (%)',
+      type: 'scatter', mode: 'lines+markers',
+      line: { color: '#059669', width: 2.5, shape: 'spline' },
+      marker: { size: 4, color: '#059669' }, yaxis: 'y2'
+    };
+
+    const layoutLine = {
+      title: { text: 'Evolução Temporal da Atmosfera', font: { size: 14 } },
+      margin: { t: 50, r: 50, l: 50, b: 40 },
+      paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+      legend: { orientation: 'h', x: 0.02, y: 1.12, font: { size: 10 } },
+      xaxis: { gridcolor: '#f1f5f9' },
+      yaxis: { title: 'Temp (°C)', titlefont: { color: '#0284c7' }, tickfont: { color: '#0284c7' }, gridcolor: '#f1f5f9' },
+      yaxis2: { title: 'Umidade (%)', titlefont: { color: '#059669' }, tickfont: { color: '#059669' }, overlaying: 'y', side: 'right' }
+    };
+    Plotly.newPlot('chartTimeSeries', [traceTemp, traceHum], layoutLine, { responsive: true, displayModeBar: false });
+
+    const traceContour = {
+      x: temps, y: hums, type: 'histogram2dcontour',
+      colorscale: 'Blues', contours: { coloring: 'heatmap' }
+    };
+    const layoutContour = {
+      title: { text: 'Densidade Térmica vs. Umidade', font: { size: 14 } },
+      margin: { t: 50, r: 20, l: 40, b: 40 },
+      xaxis: { title: 'Temp (°C)' }, yaxis: { title: 'Umid (%)' },
+      paper_bgcolor: 'transparent', plot_bgcolor: 'transparent'
+    };
+    Plotly.newPlot('chartHeatmap', [traceContour], layoutContour, { responsive: true, displayModeBar: false });
+
+  } catch(err) {
+    console.error(err);
+  }
+}
+
+function updateHumidityBadge(hum) {
+  const badge = document.getElementById('humidityStatusBadge');
+  
+  // Reseta destaques
+  ['zoneEmergencia', 'zoneAlerta', 'zoneAtencao', 'zoneIdeal', 'zoneExcesso'].forEach(id => {
+    document.getElementById(id).style.transform = 'none';
+    document.getElementById(id).style.boxShadow = 'none';
+  });
+
+  if (hum < 12) {
+    badge.innerText = 'EMERGÊNCIA (< 12%)';
+    badge.style.background = '#ffe4e6'; badge.style.color = '#e11d48';
+    highlightZone('zoneEmergencia');
+  } else if (hum < 20) {
+    badge.innerText = 'ALERTA (12% - 20%)';
+    badge.style.background = '#ffedd5'; badge.style.color = '#ea580c';
+    highlightZone('zoneAlerta');
+  } else if (hum <= 30) {
+    badge.innerText = 'ATENÇÃO (20% - 30%)';
+    badge.style.background = '#fef08a'; badge.style.color = '#a16207';
+    highlightZone('zoneAtencao');
+  } else if (hum >= 40 && hum <= 60) {
+    badge.innerText = 'IDEAL (40% - 60%)';
+    badge.style.background = '#d1fae5'; badge.style.color = '#059669';
+    highlightZone('zoneIdeal');
+  } else if (hum > 70) {
+    badge.innerText = 'EXCESSO (> 70%)';
+    badge.style.background = '#e0f2fe'; badge.style.color = '#0284c7';
+    highlightZone('zoneExcesso');
+  } else {
+    badge.innerText = `Nível Regular (${hum.toFixed(1)}%)`;
+    badge.style.background = '#f1f5f9'; badge.style.color = '#64748b';
+  }
+}
+
+function highlightZone(id) {
+  const el = document.getElementById(id);
+  el.style.transform = 'scale(1.02)';
+  el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+}
+
+async function loadDescriptiveStats() {
+  const localId = document.getElementById('filterLocal').value;
+  const dtStart = document.getElementById('statsDateStart').value;
+  const dtEnd = document.getElementById('statsDateEnd').value;
+
+  let url = '/api/analytics/descriptive?';
+  if (localId) url += `local_id=${localId}&`;
+  if (dtStart) url += `data_inicio=${dtStart}&`;
+  if (dtEnd) url += `data_fim=${dtEnd}&`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const tbody = document.getElementById('descriptiveTableBody');
+
+    if (!data.stats || Object.keys(data.stats).length === 0) {
+      tbody.innerHTML = '<tr><td colspan="15" style="padding: 20px; text-align: center; color: var(--text-muted);">Nenhum dado encontrado para os filtros selecionados.</td></tr>';
+      return;
+    }
+
+    const labels = {
+      'temperatura': 'Temperatura (°C)',
+      'umidade': 'Umidade (%)',
+      'indice_calor': 'Sensação Térmica (°C)',
+      'ponto_orvalho': 'Ponto de Orvalho (°C)',
+      'umidade_absoluta': 'Umid. Absoluta (g/m³)',
+      'pressao_vapor_real': 'Pressão Vapor (hPa)'
+    };
+
+    tbody.innerHTML = Object.entries(data.stats).map(([k, s]) => `
+      <tr style="border-bottom: 1px solid var(--border-subtle);">
+        <td style="padding: 10px 12px; font-weight: 700; text-align: left; color: #0f172a;">${labels[k] || k}</td>
+        <td style="padding: 10px 12px;">${s.n}</td>
+        <td style="padding: 10px 12px; font-weight: 700; color: #0284c7;">${s.media}</td>
+        <td style="padding: 10px 12px;">${s.mediana}</td>
+        <td style="padding: 10px 12px;">${s.min}</td>
+        <td style="padding: 10px 12px;">${s.max}</td>
+        <td style="padding: 10px 12px;">${s.q1}</td>
+        <td style="padding: 10px 12px;">${s.q3}</td>
+        <td style="padding: 10px 12px;">${s.p10}</td>
+        <td style="padding: 10px 12px;">${s.p90}</td>
+        <td style="padding: 10px 12px;">${s.dp}</td>
+        <td style="padding: 10px 12px;">${s.variancia}</td>
+        <td style="padding: 10px 12px; font-weight: 600;">${s.cv}%</td>
+        <td style="padding: 10px 12px; font-family: monospace;">${s.ic_95}</td>
+        <td style="padding: 10px 12px; font-family: monospace;">${s.ic_99}</td>
+      </tr>
+    `).join('');
+  } catch(err) {
+    console.error(err);
+  }
+}
+
+function reloadAllData() {
+  loadDashboardData();
+  loadDescriptiveStats();
+}
+
+document.addEventListener('DOMContentLoaded', reloadAllData);
+</script>
+{% endblock %}

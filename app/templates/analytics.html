@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% block title %}Análise Técnica & ML{% endblock %}
+
+{% block content %}
+<div class="glass-card">
+  <div style="margin-bottom: 20px;">
+    <h2 style="font-size: 1.3rem; font-weight: 700;">Módulo de Análise Técnica & Machine Learning</h2>
+    <p style="font-size: 0.8rem; color: var(--text-muted);">Calibração de modelos supervisionados e previsão de séries temporais atmosféricas</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 320px 1fr; gap: 24px;">
+    <!-- Painel de Configuração dos Modelos -->
+    <div style="background: var(--surface-solid); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px;">
+      <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 16px; color: var(--primary);">Parâmetros de Treinamento</h3>
+      
+      <div class="form-group">
+        <label for="mlLocal">Local da Amostra:</label>
+        <select id="mlLocal" class="form-control">
+          <option value="">-- Todos os Locais --</option>
+          {% for l in locais %}
+          <option value="{{ l.id }}">{{ l.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="mlTask">Tipo de Tarefa:</label>
+        <select id="mlTask" class="form-control" onchange="toggleTaskControls()">
+          <option value="supervised">Regressão Supervisionada</option>
+          <option value="timeseries">Série Temporal (Auto-Regressivo)</option>
+        </select>
+      </div>
+
+      <!-- Controles: Regressão Supervisionada -->
+      <div id="sectionSupervised">
+        <div class="form-group">
+          <label for="mlAlgorithm">Algoritmo:</label>
+          <select id="mlAlgorithm" class="form-control">
+            <option value="ols">Regressão Linear Múltipla (OLS)</option>
+            <option value="ridge">Regressão Ridge (L2)</option>
+            <option value="lasso">Regressão Lasso (L1)</option>
+            <option value="random_forest">Random Forest Regressor</option>
+            <option value="decision_tree">Árvore de Decisão</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="mlTarget">Variável Alvo (Y):</label>
+          <select id="mlTarget" class="form-control">
+            <option value="temperatura" selected>Temperatura (°C)</option>
+            <option value="umidade">Umidade (%)</option>
+            <option value="indice_calor">Índice de Calor (°C)</option>
+            <option value="ponto_orvalho">Ponto de Orvalho (°C)</option>
+            <option value="pressao_vapor_real">Pressão Real Ea (hPa)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Features Preditivas (X):</label>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; margin-top: 6px;">
+            <label><input type="checkbox" class="feature-cb" value="umidade" checked> Umidade Relativa</label>
+            <label><input type="checkbox" class="feature-cb" value="indice_calor" checked> Índice de Calor</label>
+            <label><input type="checkbox" class="feature-cb" value="ponto_orvalho"> Ponto de Orvalho</label>
+            <label><input type="checkbox" class="feature-cb" value="umidade_absoluta"> Umidade Absoluta</label>
+            <label><input type="checkbox" class="feature-cb" value="pressao_vapor_sat"> Pressão Saturação Es</label>
+            <label><input type="checkbox" class="feature-cb" value="pressao_vapor_real"> Pressão Vapor Ea</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controles: Auto-Regressivo -->
+      <div id="sectionTimeSeries" class="hidden">
+        <div class="form-group">
+          <label for="arTarget">Série Alvo:</label>
+          <select id="arTarget" class="form-control">
+            <option value="temperatura">Temperatura (°C)</option>
+            <option value="umidade">Umidade (%)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="arLags">Ordem de Lags (p):</label>
+          <input type="number" id="arLags" class="form-control" value="5" min="1" max="24">
+        </div>
+        <div class="form-group">
+          <label for="arSteps">Passos à Frente (Horizonte):</label>
+          <input type="number" id="arSteps" class="form-control" value="20" min="5" max="100">
+        </div>
+      </div>
+
+      <button id="btnExecuteML" class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="runMLPipeline()">Treinar e Analisar</button>
+    </div>
+
+    <!-- Painel de Resultados -->
+    <div>
+      <div class="grid-metrics" id="metricsDisplay">
+        <div class="metric-box">
+          <div class="metric-box-title">Coef. Determinação (R²)</div>
+          <div class="metric-box-val" id="valR2">--</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-box-title">Raiz Erro Quadrático (RMSE)</div>
+          <div class="metric-box-val" id="valRMSE">--</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-box-title">Erro Absoluto Médio (MAE)</div>
+          <div class="metric-box-val" id="valMAE">--</div>
+        </div>
+      </div>
+
+      <div class="glass-card" style="padding: 16px; margin-bottom: 20px;">
+        <div id="chartML" style="height: 380px;"></div>
+      </div>
+
+      <div class="glass-card" style="padding: 16px;">
+        <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 8px;">Parâmetros e Coeficientes Estimados</h4>
+        <pre id="paramsOutput" style="background: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 0.8rem; overflow-x: auto;">Execute um modelo para inspecionar os pesos.</pre>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleTaskControls() {
+  const task = document.getElementById('mlTask').value;
+  if (task === 'supervised') {
+    document.getElementById('sectionSupervised').classList.remove('hidden');
+    document.getElementById('sectionTimeSeries').classList.add('hidden');
+    document.getElementById('metricsDisplay').classList.remove('hidden');
+  } else {
+    document.getElementById('sectionSupervised').classList.add('hidden');
+    document.getElementById('sectionTimeSeries').classList.remove('hidden');
+    document.getElementById('metricsDisplay').classList.add('hidden');
+  }
+}
+
+async function runMLPipeline() {
+  const task = document.getElementById('mlTask').value;
+  const localId = document.getElementById('mlLocal').value || null;
+  const btn = document.getElementById('btnExecuteML');
+
+  btn.disabled = true;
+  btn.innerText = 'Processando...';
+
+  try {
+    if (task === 'supervised') {
+      const target = document.getElementById('mlTarget').value;
+      const features = Array.from(document.querySelectorAll('.feature-cb:checked'))
+                            .map(cb => cb.value)
+                            .filter(f => f !== target);
+      const modelType = document.getElementById('mlAlgorithm').value;
+
+      if (features.length === 0) {
+        alert('Selecione ao menos uma Feature (X) diferente da Variável Alvo.');
+        return;
+      }
+
+      const res = await fetch('/api/analytics/train', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ local_id: localId, target: target, features: features, model_type: modelType })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro no processamento');
+
+      document.getElementById('valR2').innerText = data.metrics.r2;
+      document.getElementById('valRMSE').innerText = data.metrics.rmse;
+      document.getElementById('valMAE').innerText = data.metrics.mae;
+      document.getElementById('paramsOutput').innerText = JSON.stringify(data.params, null, 2);
+
+      const indices = data.actual.map((_, i) => i + 1);
+      const traceActual = { x: indices, y: data.actual, name: 'Observado', mode: 'lines+markers', line: { color: '#64748b' } };
+      const tracePred = { x: indices, y: data.predicted, name: 'Predito', mode: 'lines', line: { color: '#0284c7', dash: 'dot', width: 2 } };
+
+      Plotly.newPlot('chartML', [traceActual, tracePred], {
+        title: { text: `Validação no Conjunto de Teste: ${modelType.toUpperCase()}`, font: { size: 14 } },
+        margin: { t: 40, r: 20, l: 40, b: 40 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent'
+      }, { responsive: true });
+
+    } else {
+      const target = document.getElementById('arTarget').value;
+      const lags = parseInt(document.getElementById('arLags').value);
+      const steps = parseInt(document.getElementById('arSteps').value);
+
+      const res = await fetch('/api/analytics/forecast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ local_id: localId, target: target, lags: lags, steps: steps })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro no processamento');
+
+      document.getElementById('paramsOutput').innerText = JSON.stringify(data.params, null, 2);
+
+      const indices = data.forecast.map((_, i) => `t + ${i + 1}`);
+      const traceForecast = { x: indices, y: data.forecast, name: 'Projeção AR', mode: 'lines+markers', line: { color: '#059669', width: 2 } };
+
+      Plotly.newPlot('chartML', [traceForecast], {
+        title: { text: `Previsão Auto-Regressiva (${steps} períodos adiante)`, font: { size: 14 } },
+        margin: { t: 40, r: 20, l: 40, b: 40 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent'
+      }, { responsive: true });
+    }
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = 'Treinar e Analisar';
+  }
+}
+</script>
+{% endblock %}
