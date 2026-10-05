@@ -6,19 +6,22 @@ main_bp = Blueprint('main', __name__)
 @main_bp.route('/')
 def dashboard():
     """Módulo Atmosfera: Dashboard com telemetria viva e isolinhas temporais"""
-    locais = DataModel.list_locais()
+    # Filtra apenas locais que possuem dados registrados
+    locais = DataModel.list_locais(only_with_data=True)
     return render_template('dashboard.html', locais=locais)
 
 @main_bp.route('/analise')
 def analytics():
     """Módulo de Análise Técnica & Machine Learning Supervisionado e AR"""
-    locais = DataModel.list_locais()
+    # Filtra apenas locais que possuem dados registrados para treino
+    locais = DataModel.list_locais(only_with_data=True)
     return render_template('analytics.html', locais=locais)
 
 @main_bp.route('/dados')
 def data_management():
     """Módulo de Gestão de Dados: Tabelas, edição, paginação e exclusões"""
-    locais = DataModel.list_locais()
+    # Filtra apenas locais que possuem dados registrados
+    locais = DataModel.list_locais(only_with_data=True)
     return render_template('data_management.html', locais=locais)
 
 @main_bp.route('/mapa')

@@ -4,18 +4,15 @@ from flask import Blueprint, jsonify, request
 import pandas as pd
 from app.services.esp_service import ESPService
 from app.services.analytics_engine import AnalyticsEngine
+from app.services.physics_engine import AtmosphericPhysics
 from app.models.data_model import DataModel
 
 api_bp = Blueprint('api', __name__)
 
 # -------------------------------------------------------------
-# TABELA CRÍTICA t-STUDENT (AUTOCONTIDA, SEM DEPENDER DE SCIPY)
+# TABELA CRÍTICA t-STUDENT (AUTOCONTIDA)
 # -------------------------------------------------------------
 def get_t_critical(df_degrees: int, confidence: float = 0.95) -> float:
-    """
-    Retorna o valor crítico bicaudal t de Student exato para pequenas amostras
-    e com convergência assintótica normal (Z) para graus de liberdade elevados.
-    """
     if df_degrees <= 0:
         return 1.960 if confidence == 0.95 else 2.576
 
@@ -42,7 +39,6 @@ def get_t_critical(df_degrees: int, confidence: float = 0.95) -> float:
     if df_degrees > 120:
         return z_limit
 
-    # Interpolação para valores intermediários de graus de liberdade
     chaves = sorted(ref_table.keys())
     for i in range(len(chaves) - 1):
         if chaves[i] < df_degrees < chaves[i + 1]:
@@ -53,12 +49,26 @@ def get_t_critical(df_degrees: int, confidence: float = 0.95) -> float:
     return z_limit
 
 # -------------------------------------------------------------
-# ROTAS DE TELEMETRIA E CONTROLE ESP32 (192.168.4.1)
+# ROTAS DE TELEMETRIA, CONTROLE E ENERGIA ESP32 (192.168.4.1)
 # -------------------------------------------------------------
 @api_bp.route('/esp/status', methods=['GET'])
 def esp_status():
     status = ESPService.ping()
     return jsonify(status)
+
+@api_bp.route('/esp/wakeup', methods=['POST'])
+def esp_wakeup():
+    """
+    Tenta restabelecer handshake de rede com o nó ou enviar pulso de ativação.
+    """
+    status = ESPService.ping()
+    if status.get('online'):
+        return jsonify({'message': 'Nó ESP32 já se encontra ativo e respondendo na rede local.', 'online': True}), 200
+
+    return jsonify({
+        'message': 'Tentativa de despertar enviada. Se o nó estiver desconectado, pressione o botão RST físico ou conecte ao AP "atalaia1".',
+        'online': False
+    }), 200
 
 @api_bp.route('/esp/extract', methods=['POST'])
 def esp_extract():
@@ -106,6 +116,16 @@ def get_coletas():
     dt_inicio = request.args.get('data_inicio')
     dt_fim = request.args.get('data_fim')
     coletas = DataModel.list_coletas(local_id=local_id_param, limit=limit, data_inicio=dt_inicio, data_fim=dt_fim)
+    
+    for c in coletas:
+        t = float(c.get('temperatura', 0.0))
+        h = float(c.get('umidade', 0.0))
+        dp = float(c.get('ponto_orvalho', AtmosphericPhysics.dew_point(t, h)))
+        vpd = AtmosphericPhysics.vpd_vapor_pressure_deficit(t, h)
+        c['vpd_kpa'] = vpd
+        c['probabilidade_chuva'] = AtmosphericPhysics.rain_probability_estimate(t, h, dp)
+        c['indice_secura'] = AtmosphericPhysics.aridity_drought_index(t, h, vpd)
+
     return jsonify(coletas)
 
 @api_bp.route('/coletas/paginadas', methods=['GET'])
@@ -125,6 +145,16 @@ def get_coletas_paginadas():
         data_fim=dt_fim,
         search=search
     )
+
+    for r in result.get('records', []):
+        t = float(r.get('temperatura', 0.0))
+        h = float(r.get('umidade', 0.0))
+        dp = float(r.get('ponto_orvalho', AtmosphericPhysics.dew_point(t, h)))
+        vpd = AtmosphericPhysics.vpd_vapor_pressure_deficit(t, h)
+        r['vpd_kpa'] = vpd
+        r['probabilidade_chuva'] = AtmosphericPhysics.rain_probability_estimate(t, h, dp)
+        r['indice_secura'] = AtmosphericPhysics.aridity_drought_index(t, h, vpd)
+
     return jsonify(result)
 
 @api_bp.route('/coletas/<int:coleta_id>', methods=['PUT'])
@@ -155,7 +185,9 @@ def delete_coletas_batch():
 
 @api_bp.route('/locais', methods=['GET'])
 def get_locais():
-    return jsonify(DataModel.list_locais())
+    # Retorna dinamicamente apenas os locais que possuem dados cadastrados
+    only_with_data = request.args.get('with_data', default='true').lower() in ('true', '1')
+    return jsonify(DataModel.list_locais(only_with_data=only_with_data))
 
 @api_bp.route('/locais/geo', methods=['GET'])
 def get_locais_geo():
@@ -180,7 +212,7 @@ def update_local(local_id: int):
     return jsonify({'message': 'Local atualizado com sucesso.'}), 200
 
 # -------------------------------------------------------------
-# ESTATÍSTICA DESCRITIVA ROBUSTA (PANDAS + MATH PURO)
+# ESTATÍSTICA DESCRITIVA ROBUSTA
 # -------------------------------------------------------------
 @api_bp.route('/analytics/descriptive', methods=['GET'])
 def get_descriptive_stats():
@@ -217,7 +249,6 @@ def get_descriptive_stats():
         sd_val = float(series.std(ddof=1)) if n > 1 else 0.0
         cv_val = float((sd_val / mean_val) * 100) if mean_val != 0 else 0.0
 
-        # Cálculo dos Intervalos de Confiança
         if n > 1 and sd_val > 0:
             se = sd_val / math.sqrt(n)
             df_deg = n - 1

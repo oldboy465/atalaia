@@ -34,6 +34,25 @@ class DataModel:
             conn.close()
 
     @staticmethod
+    def cleanup_orphaned_locais() -> int:
+        """
+        Exclui da tabela locais qualquer ponto cadastrado que não
+        possua nenhuma coleta vinculada no banco de dados.
+        """
+        DataModel.ensure_schema_migrations()
+        conn = get_db()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                DELETE FROM locais 
+                WHERE id NOT IN (SELECT DISTINCT local_id FROM coletas)
+            """)
+            conn.commit()
+            return cursor.rowcount if cursor.rowcount is not None else 0
+        finally:
+            conn.close()
+
+    @staticmethod
     def get_or_create_local(
         nome: str, 
         descricao: Optional[str] = None,
@@ -83,12 +102,26 @@ class DataModel:
             conn.close()
 
     @staticmethod
-    def list_locais() -> List[Dict[str, Any]]:
+    def list_locais(only_with_data: bool = False) -> List[Dict[str, Any]]:
+        """
+        Lista os locais cadastrados. Quando only_with_data=True, traz apenas
+        os locais que possuem coletas registradas.
+        """
         DataModel.ensure_schema_migrations()
         conn = get_db()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT * FROM locais ORDER BY nome ASC")
+            if only_with_data:
+                query = """
+                    SELECT DISTINCT l.* 
+                    FROM locais l
+                    INNER JOIN coletas c ON l.id = c.local_id
+                    ORDER BY l.nome ASC
+                """
+            else:
+                query = "SELECT * FROM locais ORDER BY nome ASC"
+
+            cursor.execute(query)
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
         finally:
@@ -113,8 +146,9 @@ class DataModel:
                     MAX(c.coletado_em) as ultima_coleta,
                     MIN(c.coletado_em) as primeira_coleta
                 FROM locais l
-                LEFT JOIN coletas c ON l.id = c.local_id
+                INNER JOIN coletas c ON l.id = c.local_id
                 GROUP BY l.id
+                HAVING COUNT(c.id) > 0
                 ORDER BY l.nome ASC
             """
             cursor.execute(query)
@@ -399,6 +433,8 @@ class DataModel:
             conn.commit()
         finally:
             conn.close()
+        # Remove o local automaticamente se esta era sua última coleta
+        DataModel.cleanup_orphaned_locais()
 
     @staticmethod
     def delete_coletas_batch(coleta_ids: List[int]) -> int:
@@ -412,20 +448,25 @@ class DataModel:
             query = f"DELETE FROM coletas WHERE id IN ({placeholders})"
             cursor.execute(query, tuple(coleta_ids))
             conn.commit()
-            return cursor.rowcount if cursor.rowcount is not None else 0
+            deleted = cursor.rowcount if cursor.rowcount is not None else 0
         finally:
             conn.close()
+        # Faxina em lote de quaisquer locais que tenham ficado sem coletas
+        DataModel.cleanup_orphaned_locais()
+        return deleted
 
     @staticmethod
     def clear_local_coletas(local_id: int) -> int:
         """
-        Exclui todas as coletas vinculadas a um determinado local.
+        Exclui todas as coletas vinculadas a um determinado local
+        e remove o cadastro do local correspondente.
         """
         DataModel.ensure_schema_migrations()
         conn = get_db()
         cursor = conn.cursor()
         try:
             cursor.execute("DELETE FROM coletas WHERE local_id = ?", (local_id,))
+            cursor.execute("DELETE FROM locais WHERE id = ?", (local_id,))
             conn.commit()
             return cursor.rowcount if cursor.rowcount is not None else 0
         finally:

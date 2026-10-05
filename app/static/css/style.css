@@ -1,51 +1,116 @@
-/* --- RESET & DESIGN SYSTEM (LIGHT MODERN GLASS) --- */
+/* ==========================================================================
+   PROJETO ATALAIA - DESIGN SYSTEM METEOROLÓGICO HIGH-PERFORMANCE
+   Arquitetura de Alta Fluidez: Aceleração GPU, Nuvens Contínuas e Vidro Dinâmico
+   ========================================================================== */
+
 :root {
-  --bg-main: #f8fafc;
-  --surface: rgba(255, 255, 255, 0.9);
-  --surface-solid: #ffffff;
-  --border-subtle: #e2e8f0;
-  --border-focus: #cbd5e1;
-  --text-main: #0f172a;
-  --text-muted: #64748b;
-  --primary: #0284c7;
-  --primary-hover: #0369a1;
-  --success: #059669;
-  --success-bg: #ecfdf5;
-  --danger: #e11d48;
-  --danger-bg: #fff1f2;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-  --shadow-md: 0 10px 25px -5px rgba(0,0,0,0.04), 0 8px 10px -6px rgba(0,0,0,0.04);
+  /* Paleta Base Profunda */
+  --bg-space: #050a14;
+  --bg-gradient: radial-gradient(circle at 50% 0%, #0a192f 0%, #050b16 65%, #02050a 100%);
+  --surface-glass: rgba(10, 22, 40, 0.75);
+  --surface-glass-card: rgba(13, 27, 50, 0.62);
+  --surface-glass-card-hover: rgba(18, 36, 66, 0.80);
+  --surface-solid: #091322;
+  --surface-inner-card: rgba(6, 14, 26, 0.58);
+
+  /* Bordas e Reflexos de Luz Atmosférica */
+  --border-subtle: rgba(148, 163, 184, 0.14);
+  --border-glow: rgba(56, 189, 248, 0.35);
+  --border-highlight: rgba(255, 255, 255, 0.16);
+
+  /* Tipografia & Luminosidade */
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --text-glow: rgba(248, 250, 252, 0.95);
+
+  /* Identidade Climática Vetorial */
+  --weather-sky: #38bdf8;
+  --weather-sky-glow: rgba(56, 189, 248, 0.4);
+  --weather-humidity: #34d399;
+  --weather-humidity-glow: rgba(52, 211, 153, 0.4);
+  --weather-heat: #fb923c;
+  --weather-heat-glow: rgba(251, 146, 60, 0.4);
+  --weather-rain: #60a5fa;
+  --weather-rain-glow: rgba(96, 165, 250, 0.45);
+  --weather-storm: #f43f5e;
+  --weather-drought: #eab308;
+
+  /* Status Hardware */
+  --online: #10b981;
+  --online-glow: rgba(16, 185, 129, 0.6);
+  --offline: #ef4444;
+  --offline-glow: rgba(239, 68, 68, 0.6);
+
+  /* Sombras & Profundidade */
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--border-subtle);
+  --shadow-glow: 0 0 25px -4px var(--weather-sky-glow);
+
+  /* Raios de Curvatura */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+
+  /* Transições Suaves */
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-* {
+/* Reset Global & Otimização de Render */
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  background-color: var(--bg-main);
-  color: var(--text-main);
+html, body {
   min-height: 100vh;
+  background-color: var(--bg-space);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overflow-x: hidden;
 }
 
-/* --- TOPBAR FIXA --- */
+/* --- CANVAS DO CLIMA: ACELERADO POR GPU SEM LENTIDÃO --- */
+#weatherCanvasBackdrop {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.85;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+/* --- TOPBAR ATMOSFÉRICA FLUTUANTE --- */
 .topbar {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 70px;
-  background: var(--surface);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-subtle);
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%) translate3d(0, 0, 0);
+  width: calc(100% - 36px);
+  max-width: 1440px;
+  height: 68px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 28px;
+  padding: 0 22px;
   z-index: 1000;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
+  transition: all 0.25s var(--ease-smooth);
 }
 
 .topbar-brand {
@@ -54,213 +119,415 @@ body {
   gap: 12px;
 }
 
-.brand-logo {
-  background: var(--primary);
-  color: #fff;
-  font-weight: 800;
-  font-size: 1rem;
-  padding: 6px 10px;
-  border-radius: 8px;
+.brand-logo-wrapper {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px var(--weather-sky-glow);
+}
+
+.brand-icon {
+  width: 20px;
+  height: 20px;
+  fill: #ffffff;
+}
+
+.brand-radar-ping {
+  position: absolute;
+  inset: -3px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--weather-sky);
+  animation: radar-ping 2.5s infinite;
+  opacity: 0;
+}
+
+@keyframes radar-ping {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  60% { transform: scale(1.3); opacity: 0; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+.brand-text-block {
+  display: flex;
+  flex-direction: column;
 }
 
 .brand-title {
   font-size: 1.05rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .brand-version {
-  font-size: 0.75rem;
-  background: #e0f2fe;
-  color: var(--primary);
-  padding: 2px 6px;
-  border-radius: 6px;
+  font-size: 0.68rem;
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--weather-sky);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
 }
 
 .brand-sub {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
 }
 
+/* Links de Navegação */
 .nav-links {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 4px;
+  background: rgba(4, 9, 18, 0.45);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .nav-link {
   text-decoration: none;
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s var(--ease-smooth);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.nav-link:hover, .nav-link.active {
-  color: var(--primary);
-  background: #f0f9ff;
+.nav-link:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
 }
 
+.nav-link.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(2, 132, 199, 0.35));
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+}
+
+/* Ações e Controles */
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
 
 .status-indicator {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--surface-solid);
+  background: rgba(3, 8, 17, 0.55);
   padding: 6px 12px;
   border: 1px solid var(--border-subtle);
-  border-radius: 20px;
-  font-size: 0.8rem;
+  border-radius: var(--radius-full);
+  font-size: 0.76rem;
   font-weight: 600;
+  color: var(--text-muted);
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
+  position: relative;
 }
 
-.status-dot.online { background-color: var(--success); box-shadow: 0 0 8px var(--success); }
-.status-dot.offline { background-color: var(--danger); box-shadow: 0 0 8px var(--danger); }
+.status-dot.online {
+  background-color: var(--online);
+  box-shadow: 0 0 10px var(--online-glow);
+}
 
-/* --- BOTÕES --- */
+.status-dot.online::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--online);
+  animation: pulse-dot 2s infinite;
+}
+
+.status-dot.offline {
+  background-color: var(--offline);
+  box-shadow: 0 0 10px var(--offline-glow);
+}
+
+@keyframes pulse-dot {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(0.9); opacity: 0; }
+}
+
+/* --- BOTÕES MODERNOS --- */
 .btn {
   padding: 8px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: all 0.2s ease;
+  transition: all 0.2s var(--ease-spring);
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.btn:active {
+  transform: scale(0.97);
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
+  transform: none;
 }
 
-.btn-primary { background: var(--primary); color: #fff; }
-.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
-.btn-outline { background: var(--surface-solid); border-color: var(--border-subtle); color: var(--text-main); }
-.btn-outline:hover:not(:disabled) { background: #f1f5f9; }
-.btn-danger { background: var(--danger-bg); color: var(--danger); border-color: #fecdd3; }
-.btn-danger:hover:not(:disabled) { background: #ffe4e6; }
-
-/* --- LAYOUT DO CONTEÚDO PRINCIPAL --- */
-.main-content {
-  margin-top: 90px;
-  padding: 0 28px 40px 28px;
+.btn-primary {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #ffffff;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
 }
 
-/* --- CARDS & GRIDS --- */
-.glass-card {
-  background: var(--surface);
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0369a1, #075985);
+  box-shadow: 0 6px 18px rgba(2, 132, 199, 0.5);
+}
+
+.btn-wake {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35));
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.btn-wake:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(5, 150, 105, 0.5));
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
+}
+
+.btn-outline {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-subtle);
+  color: var(--text-main);
   backdrop-filter: blur(8px);
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  padding: 22px;
-  box-shadow: var(--shadow-md);
-  margin-bottom: 20px;
 }
 
+.btn-outline:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: var(--border-highlight);
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.22);
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.3);
+}
+
+/* --- CONTEÚDO PRINCIPAL --- */
+.main-content {
+  position: relative;
+  z-index: 10;
+  margin-top: 100px;
+  padding: 0 20px 60px 20px;
+  max-width: 1440px;
+  margin-left: auto;
+  margin-right: auto;
+  animation: page-appear 0.35s var(--ease-smooth);
+}
+
+@keyframes page-appear {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- CARDS COM EFEITO FROSTED GLASS ATMOSFÉRICO --- */
+.glass-card {
+  background: var(--surface-glass-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-highlight), transparent);
+}
+
+.glass-card:hover {
+  border-color: var(--border-glow);
+}
+
+/* --- GRID DE MÉTRICAS ATMOSFÉRICAS --- */
 .grid-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
 
 .metric-box {
-  background: var(--surface-solid);
+  background: var(--surface-inner-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 16px;
   text-align: center;
+  position: relative;
+  backdrop-filter: blur(8px);
+  transition: transform 0.25s var(--ease-spring), border-color 0.25s ease;
+}
+
+.metric-box:hover {
+  transform: translateY(-3px);
+  border-color: rgba(56, 189, 248, 0.4);
 }
 
 .metric-box-title {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
   text-transform: uppercase;
   margin-bottom: 6px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  font-weight: 600;
 }
 
 .metric-box-val {
-  font-size: 1.6rem;
+  font-size: 1.8rem;
   font-weight: 700;
-  color: var(--text-main);
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
 }
 
 .metric-box-val span {
   font-size: 0.85rem;
-  color: var(--text-muted);
-  font-weight: 400;
+  color: var(--weather-sky);
+  font-weight: 500;
+  margin-left: 2px;
 }
 
-/* --- FORMULÁRIOS & CAMPOS --- */
+/* --- FORMULÁRIOS & CAMPOS DARK GLASS --- */
 .form-group {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .form-group label {
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 600;
+  color: var(--text-muted);
   margin-bottom: 6px;
+  letter-spacing: 0.02em;
 }
 
 .form-control {
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 14px;
+  background: rgba(5, 12, 22, 0.7);
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.85rem;
-  outline: none;
-  background-color: #ffffff;
   color: var(--text-main);
+  outline: none;
+  transition: all 0.2s ease;
 }
 
 .form-control:focus {
-  border-color: var(--primary);
+  border-color: var(--weather-sky);
+  box-shadow: 0 0 10px var(--weather-sky-glow);
+  background: rgba(5, 12, 22, 0.9);
 }
 
-/* --- MODAL --- */
+select.form-control {
+  cursor: pointer;
+  background-color: #081220;
+}
+
+select.form-control option {
+  background: #081220;
+  color: #f1f5f9;
+}
+
+/* --- MODAL CLIMÁTICO TRANSLÚCIDO --- */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(4px);
+  background: rgba(2, 6, 12, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+  padding: 16px;
 }
 
-.hidden { display: none !important; }
+.hidden {
+  display: none !important;
+}
 
 .modal-card {
-  background: #ffffff;
-  border-radius: 16px;
+  background: rgba(11, 23, 42, 0.95);
+  border: 1px solid var(--border-highlight);
+  border-radius: var(--radius-lg);
   width: 100%;
-  max-width: 480px;
-  padding: 24px;
-  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
+  max-width: 500px;
+  padding: 26px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65), 0 0 30px rgba(56, 189, 248, 0.15);
+  animation: modal-enter 0.25s var(--ease-spring);
+}
+
+@keyframes modal-enter {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 12px;
+}
+
+.modal-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
 }
 
 .modal-close {
@@ -268,23 +535,121 @@ body {
   border: none;
   font-size: 1.4rem;
   cursor: pointer;
+  color: var(--text-dim);
+  transition: color 0.2s;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: #ffffff;
+}
+
+.modal-desc {
+  font-size: 0.8rem;
   color: var(--text-muted);
+  margin-bottom: 16px;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 18px;
+  gap: 12px;
+  margin-top: 22px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 14px;
 }
 
-/* --- CUSTOM LEAFLET MAP --- */
-.leaflet-popup-content-wrapper {
-  border-radius: 12px !important;
-  box-shadow: var(--shadow-md) !important;
-  border: 1px solid var(--border-subtle) !important;
+/* --- DOCK INFERIOR MOBILE --- */
+.mobile-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 62px;
+  background: rgba(6, 13, 24, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border-subtle);
+  z-index: 1000;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 8px;
 }
 
-.leaflet-popup-tip {
-  background: #ffffff !important;
+.mobile-nav-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-decoration: none;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.mobile-nav-link svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
+
+.mobile-nav-link.active {
+  color: var(--weather-sky);
+}
+
+.mobile-nav-link.active svg {
+  stroke: var(--weather-sky);
+  filter: drop-shadow(0 0 6px var(--weather-sky-glow));
+}
+
+/* --- RESPONSIVIDADE TOUCH --- */
+@media (max-width: 960px) {
+  .topbar {
+    top: 0;
+    width: 100%;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    padding: 0 16px;
+    height: 60px;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .mobile-nav {
+    display: flex;
+  }
+
+  .main-content {
+    margin-top: 76px;
+    padding: 0 12px 84px 12px;
+  }
+
+  .topbar-actions .btn-outline {
+    display: none;
+  }
+
+  .status-text {
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .grid-metrics {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .glass-card {
+    padding: 16px;
+  }
 }

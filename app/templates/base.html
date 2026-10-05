@@ -2,64 +2,109 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Atalaia v1{% endblock %} - Monitoramento & Telemetria</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{% block title %}Atalaia v1{% endblock %} - Monitoramento Meteorológico & Telemetria</title>
   
-  <!-- CSS e Bibliotecas Visuais -->
+  <!-- Preconnect para CDNs (elimina latência de transição) -->
+  <link rel="preconnect" href="https://cdn.plot.ly" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  
+  <!-- CSS Global Climático -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-  
-  <!-- Leaflet Maps CSS & JS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile_patch.css') }}">
+
+  <!-- Leaflet Maps CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body>
 
-  <!-- Topbar Global Fixa -->
+  <!-- MOTOR VISUAL METEOROLÓGICO: PASSAGEM CONTÍNUA DE NUVENS, BRISA E LUZ SUAVE -->
+  <canvas id="weatherCanvasBackdrop" aria-hidden="true"></canvas>
+
+  <!-- TOPBAR ATMOSFÉRICA FLUTUANTE MODERNA -->
   <header class="topbar">
     <div class="topbar-brand">
-      <div class="brand-logo">A1</div>
-      <div>
-        <h1 class="brand-title">Projeto Atalaia <span class="brand-version">v1.0</span></h1>
-        <p class="brand-sub">Nó Sensorial & Análise Psicrométrica</p>
+      <div class="brand-logo-wrapper">
+        <svg viewBox="0 0 24 24" class="brand-icon">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        <span class="brand-radar-ping"></span>
+      </div>
+      <div class="brand-text-block">
+        <h1 class="brand-title">
+          Projeto Atalaia 
+          <span class="brand-version">v1.2</span>
+        </h1>
+        <p class="brand-sub">Sistema Psicrométrico & Monitoramento Microclimático</p>
       </div>
     </div>
 
-    <!-- Navegação entre Módulos -->
+    <!-- Navegação Desktop -->
     <nav class="nav-links">
-      <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">Atmosfera</a>
-      <a href="{{ url_for('main.analytics') }}" class="nav-link {% if request.endpoint == 'main.analytics' %}active{% endif %}">Análise & ML</a>
-      <a href="{{ url_for('main.data_management') }}" class="nav-link {% if request.endpoint == 'main.data_management' %}active{% endif %}">Gestão de Dados</a>
-      <a href="{{ url_for('main.map_view') }}" class="nav-link {% if request.endpoint == 'main.map_view' %}active{% endif %}">Mapa Espacial</a>
+      <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" data-nav="atmosfera">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+        <span>Atmosfera</span>
+      </a>
+      <a href="{{ url_for('main.analytics') }}" class="nav-link {% if request.endpoint == 'main.analytics' %}active{% endif %}" data-nav="modelos">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        <span>Análise & ML</span>
+      </a>
+      <a href="{{ url_for('main.data_management') }}" class="nav-link {% if request.endpoint == 'main.data_management' %}active{% endif %}" data-nav="dados">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span>Gestão de Dados</span>
+      </a>
+      <a href="{{ url_for('main.map_view') }}" class="nav-link {% if request.endpoint == 'main.map_view' %}active{% endif %}" data-nav="mapa">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+        <span>Radar Espacial</span>
+      </a>
     </nav>
 
-    <!-- Indicador de Status & Controles ESP32 -->
+    <!-- Indicador de Status & Controles ESP32 (COM BOTÃO LIGAR E DESLIGAR NÓ) -->
     <div class="topbar-actions">
       <div class="status-indicator">
         <span class="status-dot offline" id="espDot"></span>
         <span class="status-text" id="espStatusText">ESP32: Verificando...</span>
       </div>
 
-      <button id="btnConnect" class="btn btn-outline" onclick="checkESPStatus()">Verificar Conexão</button>
-      <button id="btnExtractModal" class="btn btn-primary" onclick="openExtractModal()">Extrair Dados</button>
-      <button id="btnShutdown" class="btn btn-danger" onclick="triggerShutdown()">Desligar Nó</button>
+      <button id="btnConnect" class="btn btn-outline" onclick="checkESPStatus()" title="Verificar conexão com ESP32">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        <span>Ping</span>
+      </button>
+
+      <button id="btnWakeup" class="btn btn-wake" onclick="triggerWakeup()" title="Reconectar / Ativar Nó Sensorial">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 5.64A9 9 0 0 1 20.9 12a9 9 0 1 1-2.54-6.36"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+        <span>Ligar Nó</span>
+      </button>
+
+      <button id="btnExtractModal" class="btn btn-primary" onclick="openExtractModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <span>Extrair</span>
+      </button>
+
+      <button id="btnShutdown" class="btn btn-danger" onclick="triggerShutdown()" title="Colocar ESP32 em Deep-Sleep">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+        <span>Dormir</span>
+      </button>
     </div>
   </header>
 
-  <!-- Modal de Extração e Vínculo de Local -->
+  <!-- MODAL TRANSLÚCIDO DE EXTRAÇÃO -->
   <div id="extractModal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Extração de Dados do Buffer (Capacidade: 7200)</h3>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--weather-sky)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <h3>Sincronização de Dados Flash (7200 Max)</h3>
+        </div>
         <button class="modal-close" onclick="closeExtractModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="modal-desc">Vincule o lote de medições descarregado a um local físico:</p>
+        <p class="modal-desc">Vincule as medições descarregadas a uma estação física georreferenciada:</p>
         
         <div class="form-group">
-          <label for="modalLocalSelect">Selecionar Local Existente:</label>
+          <label for="modalLocalSelect">Estação Existente:</label>
           <select id="modalLocalSelect" class="form-control" onchange="handleModalLocalChange()">
-            <option value="">-- Cadastrar Novo Local --</option>
+            <option value="">-- Cadastrar Nova Estação --</option>
             {% for l in locais %}
             <option value="{{ l.nome }}" data-lat="{{ l.latitude or '' }}" data-lng="{{ l.longitude or '' }}">{{ l.nome }}</option>
             {% endfor %}
@@ -67,38 +112,64 @@
         </div>
 
         <div class="form-group">
-          <label for="modalLocalNome">Nome do Local:</label>
-          <input type="text" id="modalLocalNome" class="form-control" placeholder="Ex: Laboratório de Pesquisa">
+          <label for="modalLocalNome">Identificação da Estação:</label>
+          <input type="text" id="modalLocalNome" class="form-control" placeholder="Ex: Campus Universitário - Estação Central">
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
           <div class="form-group">
             <label for="modalLocalLat">Latitude:</label>
-            <input type="number" step="any" id="modalLocalLat" class="form-control" placeholder="Ex: -2.5307">
+            <input type="number" step="any" id="modalLocalLat" class="form-control" placeholder="-2.5307">
           </div>
           <div class="form-group">
             <label for="modalLocalLng">Longitude:</label>
-            <input type="number" step="any" id="modalLocalLng" class="form-control" placeholder="Ex: -44.3068">
+            <input type="number" step="any" id="modalLocalLng" class="form-control" placeholder="-44.3068">
           </div>
         </div>
 
         <div class="form-group">
-          <label for="modalLocalDesc">Descrição / Observações (Opcional):</label>
-          <textarea id="modalLocalDesc" class="form-control" rows="2" placeholder="Ex: Perto do banco de baterias"></textarea>
+          <label for="modalLocalDesc">Notas / Descrição:</label>
+          <textarea id="modalLocalDesc" class="form-control" rows="2" placeholder="Ex: Nó instalado sob abrigo meteorológico ventilado."></textarea>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeExtractModal()">Cancelar</button>
-        <button id="btnConfirmExtract" class="btn btn-primary" onclick="executeExtraction()">Confirmar e Extrair</button>
+        <button id="btnConfirmExtract" class="btn btn-primary" onclick="executeExtraction()">Confirmar Sincronização</button>
       </div>
     </div>
   </div>
 
-  <!-- Conteúdo Principal -->
-  <main class="main-content">
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="main-content" id="appMainContent">
     {% block content %}{% endblock %}
   </main>
 
+  <!-- DOCK MOBILE INFERIOR -->
+  <nav class="mobile-nav">
+    <a href="{{ url_for('main.dashboard') }}" class="mobile-nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+      <span>Atmosfera</span>
+    </a>
+    <a href="{{ url_for('main.analytics') }}" class="mobile-nav-link {% if request.endpoint == 'main.analytics' %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+      <span>Modelos</span>
+    </a>
+    <a href="{{ url_for('main.data_management') }}" class="mobile-nav-link {% if request.endpoint == 'main.data_management' %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+      <span>Dados</span>
+    </a>
+    <a href="{{ url_for('main.map_view') }}" class="mobile-nav-link {% if request.endpoint == 'main.map_view' %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon></svg>
+      <span>Radar</span>
+    </a>
+  </nav>
+
+  <!-- Bibliotecas Externas Diferidas (Sem travar o DOM) -->
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" defer></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+
+  <!-- Scripts Nativos Otimizados -->
+  <script src="{{ url_for('static', filename='js/weather_fx.js') }}"></script>
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   {% block scripts %}{% endblock %}
 </body>

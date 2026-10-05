@@ -1,22 +1,29 @@
 {% extends 'base.html' %}
-{% block title %}Análise Técnica & ML{% endblock %}
+{% block title %}Laboratório Analítico & Modelos Preditivos{% endblock %}
 
 {% block content %}
 <div class="glass-card">
-  <div style="margin-bottom: 20px;">
-    <h2 style="font-size: 1.3rem; font-weight: 700;">Módulo de Análise Técnica & Machine Learning</h2>
-    <p style="font-size: 0.8rem; color: var(--text-muted);">Calibração de modelos supervisionados e previsão de séries temporais atmosféricas</p>
+  <!-- Cabeçalho do Módulo Analítico -->
+  <div style="margin-bottom: 24px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px;">
+    <h2 style="font-size: 1.35rem; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 10px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--weather-sky)" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+      Laboratório de Análise Técnica, Regressão & Séries Temporais
+    </h2>
+    <p style="font-size: 0.8rem; color: var(--text-muted);">Calibração de modelos supervisionados multivariados, estimativa residual e auto-regressão estocástica</p>
   </div>
 
-  <div style="display: grid; grid-template-columns: 320px 1fr; gap: 24px;">
-    <!-- Painel de Configuração dos Modelos -->
-    <div style="background: var(--surface-solid); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px;">
-      <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 16px; color: var(--primary);">Parâmetros de Treinamento</h3>
+  <div style="display: grid; grid-template-columns: 340px 1fr; gap: 24px;" class="analytics-layout-grid">
+    <!-- Painel de Configuração dos Modelos (Sidebar Glass) -->
+    <div style="background: rgba(13, 27, 50, 0.65); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 22px; backdrop-filter: blur(12px);">
+      <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 18px; color: var(--weather-sky); display: flex; align-items: center; gap: 6px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        Parâmetros de Treinamento
+      </h3>
       
       <div class="form-group">
-        <label for="mlLocal">Local da Amostra:</label>
+        <label for="mlLocal">Estação de Coleta:</label>
         <select id="mlLocal" class="form-control">
-          <option value="">-- Todos os Locais --</option>
+          <option value="">-- Todos os Locais Consolidados --</option>
           {% for l in locais %}
           <option value="{{ l.id }}">{{ l.nome }}</option>
           {% endfor %}
@@ -24,46 +31,46 @@
       </div>
 
       <div class="form-group">
-        <label for="mlTask">Tipo de Tarefa:</label>
+        <label for="mlTask">Arquitetura de Modelagem:</label>
         <select id="mlTask" class="form-control" onchange="toggleTaskControls()">
-          <option value="supervised">Regressão Supervisionada</option>
-          <option value="timeseries">Série Temporal (Auto-Regressivo)</option>
+          <option value="supervised">Regressão Supervisionada Multivariada</option>
+          <option value="timeseries">Série Temporal (Auto-Regressivo AR)</option>
         </select>
       </div>
 
       <!-- Controles: Regressão Supervisionada -->
       <div id="sectionSupervised">
         <div class="form-group">
-          <label for="mlAlgorithm">Algoritmo:</label>
+          <label for="mlAlgorithm">Algoritmo Estimador:</label>
           <select id="mlAlgorithm" class="form-control">
             <option value="ols">Regressão Linear Múltipla (OLS)</option>
-            <option value="ridge">Regressão Ridge (L2)</option>
-            <option value="lasso">Regressão Lasso (L1)</option>
-            <option value="random_forest">Random Forest Regressor</option>
-            <option value="decision_tree">Árvore de Decisão</option>
+            <option value="ridge">Regressão Ridge (Penalização L2)</option>
+            <option value="lasso">Regressão Lasso (Penalização L1)</option>
+            <option value="random_forest">Random Forest Ensemble (50 árvores)</option>
+            <option value="decision_tree">Árvore de Decisão Cartesiana</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="mlTarget">Variável Alvo (Y):</label>
+          <label for="mlTarget">Variável Endógena / Alvo (Y):</label>
           <select id="mlTarget" class="form-control">
-            <option value="temperatura" selected>Temperatura (°C)</option>
-            <option value="umidade">Umidade (%)</option>
-            <option value="indice_calor">Índice de Calor (°C)</option>
+            <option value="temperatura" selected>Temperatura do Ar (°C)</option>
+            <option value="umidade">Umidade Relativa (%)</option>
+            <option value="indice_calor">Sensação Térmica (°C)</option>
             <option value="ponto_orvalho">Ponto de Orvalho (°C)</option>
             <option value="pressao_vapor_real">Pressão Real Ea (hPa)</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label>Features Preditivas (X):</label>
-          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; margin-top: 6px;">
-            <label><input type="checkbox" class="feature-cb" value="umidade" checked> Umidade Relativa</label>
-            <label><input type="checkbox" class="feature-cb" value="indice_calor" checked> Índice de Calor</label>
-            <label><input type="checkbox" class="feature-cb" value="ponto_orvalho"> Ponto de Orvalho</label>
-            <label><input type="checkbox" class="feature-cb" value="umidade_absoluta"> Umidade Absoluta</label>
-            <label><input type="checkbox" class="feature-cb" value="pressao_vapor_sat"> Pressão Saturação Es</label>
-            <label><input type="checkbox" class="feature-cb" value="pressao_vapor_real"> Pressão Vapor Ea</label>
+          <label>Covariáveis Preditivas (X):</label>
+          <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.82rem; margin-top: 8px; background: rgba(6, 14, 26, 0.5); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="umidade" checked> Umidade Relativa (%)</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="indice_calor" checked> Sensação Térmica (°C)</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="ponto_orvalho"> Ponto de Orvalho (°C)</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="umidade_absoluta"> Densidade Absoluta (g/m³)</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="pressao_vapor_sat"> Pressão Saturação Es (hPa)</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="pressao_vapor_real"> Pressão Real Ea (hPa)</label>
           </div>
         </div>
       </div>
@@ -71,49 +78,65 @@
       <!-- Controles: Auto-Regressivo -->
       <div id="sectionTimeSeries" class="hidden">
         <div class="form-group">
-          <label for="arTarget">Série Alvo:</label>
+          <label for="arTarget">Série Temporal de Entrada:</label>
           <select id="arTarget" class="form-control">
-            <option value="temperatura">Temperatura (°C)</option>
-            <option value="umidade">Umidade (%)</option>
+            <option value="temperatura">Temperatura do Ar (°C)</option>
+            <option value="umidade">Umidade Relativa (%)</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="arLags">Ordem de Lags (p):</label>
+          <label for="arLags">Ordem de Lags (Defasagens p):</label>
           <input type="number" id="arLags" class="form-control" value="5" min="1" max="24">
         </div>
         <div class="form-group">
-          <label for="arSteps">Passos à Frente (Horizonte):</label>
+          <label for="arSteps">Passos Adiante (Horizonte h):</label>
           <input type="number" id="arSteps" class="form-control" value="20" min="5" max="100">
         </div>
       </div>
 
-      <button id="btnExecuteML" class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="runMLPipeline()">Treinar e Analisar</button>
+      <button id="btnExecuteML" class="btn btn-primary" style="width: 100%; margin-top: 14px; padding: 12px;" onclick="runMLPipeline()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Treinar e Processar
+      </button>
     </div>
 
-    <!-- Painel de Resultados -->
+    <!-- Painel de Gráficos e Diagnóstico de Performance -->
     <div>
       <div class="grid-metrics" id="metricsDisplay">
         <div class="metric-box">
           <div class="metric-box-title">Coef. Determinação (R²)</div>
-          <div class="metric-box-val" id="valR2">--</div>
+          <div class="metric-box-val" id="valR2" style="color: var(--weather-sky);">--</div>
+          <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Bondade do Ajuste Global</div>
         </div>
         <div class="metric-box">
-          <div class="metric-box-title">Raiz Erro Quadrático (RMSE)</div>
-          <div class="metric-box-val" id="valRMSE">--</div>
+          <div class="metric-box-title">Raiz Erro Médio (RMSE)</div>
+          <div class="metric-box-val" id="valRMSE" style="color: var(--weather-drought);">--</div>
+          <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Penalização de Grandes Erros</div>
         </div>
         <div class="metric-box">
           <div class="metric-box-title">Erro Absoluto Médio (MAE)</div>
-          <div class="metric-box-val" id="valMAE">--</div>
+          <div class="metric-box-val" id="valMAE" style="color: var(--weather-humidity);">--</div>
+          <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Desvio Absoluto Médio</div>
         </div>
       </div>
 
-      <div class="glass-card" style="padding: 16px; margin-bottom: 20px;">
-        <div id="chartML" style="height: 380px;"></div>
+      <!-- Gráfico Principal: Ajuste e Validação Holdout -->
+      <div class="glass-card" style="padding: 18px; margin-bottom: 20px;">
+        <div id="chartML" style="height: 380px; width: 100%;"></div>
       </div>
 
-      <div class="glass-card" style="padding: 16px;">
-        <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 8px;">Parâmetros e Coeficientes Estimados</h4>
-        <pre id="paramsOutput" style="background: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 0.8rem; overflow-x: auto;">Execute um modelo para inspecionar os pesos.</pre>
+      <!-- Gráfico Secundário: Histograma de Resíduos Térmicos -->
+      <div class="glass-card" style="padding: 18px; margin-bottom: 20px;" id="residualCard">
+        <div id="chartResiduals" style="height: 240px; width: 100%;"></div>
+      </div>
+
+      <!-- Saída de Parâmetros e Pesos do Modelo -->
+      <div class="glass-card" style="padding: 18px; margin-bottom: 0;">
+        <h4 style="font-size: 0.92rem; font-weight: 700; margin-bottom: 10px; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
+          Parâmetros, Pesos e Coeficientes Estimados
+        </h4>
+        <pre id="paramsOutput" style="background: rgba(6, 14, 26, 0.85); border: 1px solid var(--border-subtle); color: var(--weather-sky); padding: 14px; border-radius: var(--radius-sm); font-size: 0.8rem; font-family: monospace; overflow-x: auto; max-height: 220px;">Execute uma calibração para inspecionar os tensores e coeficientes.</pre>
       </div>
     </div>
   </div>
@@ -121,6 +144,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/charts_theme.js') }}"></script>
 <script>
 function toggleTaskControls() {
   const task = document.getElementById('mlTask').value;
@@ -128,10 +152,12 @@ function toggleTaskControls() {
     document.getElementById('sectionSupervised').classList.remove('hidden');
     document.getElementById('sectionTimeSeries').classList.add('hidden');
     document.getElementById('metricsDisplay').classList.remove('hidden');
+    document.getElementById('residualCard').classList.remove('hidden');
   } else {
     document.getElementById('sectionSupervised').classList.add('hidden');
     document.getElementById('sectionTimeSeries').classList.remove('hidden');
     document.getElementById('metricsDisplay').classList.add('hidden');
+    document.getElementById('residualCard').classList.add('hidden');
   }
 }
 
@@ -141,7 +167,14 @@ async function runMLPipeline() {
   const btn = document.getElementById('btnExecuteML');
 
   btn.disabled = true;
-  btn.innerText = 'Processando...';
+  const originalHTML = btn.innerHTML;
+  btn.innerHTML = `
+    <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+      <path d="M12 2a10 10 0 0 1 10 10" stroke-opacity="1"></path>
+    </svg>
+    Calculando Modelos...
+  `;
 
   try {
     if (task === 'supervised') {
@@ -152,7 +185,7 @@ async function runMLPipeline() {
       const modelType = document.getElementById('mlAlgorithm').value;
 
       if (features.length === 0) {
-        alert('Selecione ao menos uma Feature (X) diferente da Variável Alvo.');
+        alert('Selecione ao menos uma Variável Preditiva (X) diferente da Variável Alvo.');
         return;
       }
 
@@ -162,7 +195,7 @@ async function runMLPipeline() {
         body: JSON.stringify({ local_id: localId, target: target, features: features, model_type: modelType })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro no processamento');
+      if (!res.ok) throw new Error(data.error || 'Erro no processamento supervisionado.');
 
       document.getElementById('valR2').innerText = data.metrics.r2;
       document.getElementById('valRMSE').innerText = data.metrics.rmse;
@@ -170,15 +203,31 @@ async function runMLPipeline() {
       document.getElementById('paramsOutput').innerText = JSON.stringify(data.params, null, 2);
 
       const indices = data.actual.map((_, i) => i + 1);
-      const traceActual = { x: indices, y: data.actual, name: 'Observado', mode: 'lines+markers', line: { color: '#64748b' } };
-      const tracePred = { x: indices, y: data.predicted, name: 'Predito', mode: 'lines', line: { color: '#0284c7', dash: 'dot', width: 2 } };
+      const traceActual = { 
+        x: indices, y: data.actual, name: 'Observado (Holdout Teste)', 
+        mode: 'lines+markers', line: { color: '#64748b', width: 2 },
+        marker: { size: 5, color: '#94a3b8' } 
+      };
+      const tracePred = { 
+        x: indices, y: data.predicted, name: `Predito (${modelType.toUpperCase()})`, 
+        mode: 'lines', line: { color: '#38bdf8', dash: 'dot', width: 2.5 } 
+      };
 
-      Plotly.newPlot('chartML', [traceActual, tracePred], {
-        title: { text: `Validação no Conjunto de Teste: ${modelType.toUpperCase()}`, font: { size: 14 } },
-        margin: { t: 40, r: 20, l: 40, b: 40 },
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent'
-      }, { responsive: true });
+      const layout = WeatherChartsTheme.getLayout(`Validação no Conjunto de Teste: ${modelType.toUpperCase()}`);
+      layout.xaxis.title = 'Amostras de Teste';
+      layout.yaxis.title = `Magnitude de ${target}`;
+      Plotly.newPlot('chartML', [traceActual, tracePred], layout, { responsive: true, displayModeBar: false });
+
+      // Gráfico de Resíduos (Diferença Observado - Predito)
+      const residuals = data.actual.map((act, i) => act - data.predicted[i]);
+      const traceResiduals = {
+        x: indices, y: residuals, type: 'bar',
+        name: 'Resíduo (e = y - ŷ)',
+        marker: { color: residuals.map(r => r >= 0 ? '#38bdf8' : '#f43f5e') }
+      };
+      const layoutRes = WeatherChartsTheme.getLayout('Distribuição dos Resíduos de Estimação');
+      layoutRes.yaxis.title = 'Erro Residual';
+      Plotly.newPlot('chartResiduals', [traceResiduals], layoutRes, { responsive: true, displayModeBar: false });
 
     } else {
       const target = document.getElementById('arTarget').value;
@@ -191,25 +240,27 @@ async function runMLPipeline() {
         body: JSON.stringify({ local_id: localId, target: target, lags: lags, steps: steps })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro no processamento');
+      if (!res.ok) throw new Error(data.error || 'Erro na projeção temporal.');
 
       document.getElementById('paramsOutput').innerText = JSON.stringify(data.params, null, 2);
 
       const indices = data.forecast.map((_, i) => `t + ${i + 1}`);
-      const traceForecast = { x: indices, y: data.forecast, name: 'Projeção AR', mode: 'lines+markers', line: { color: '#059669', width: 2 } };
+      const traceForecast = { 
+        x: indices, y: data.forecast, name: 'Projeção Auto-Regressiva (AR)', 
+        mode: 'lines+markers', line: { color: '#34d399', width: 2.5 },
+        marker: { size: 6, color: '#10b981' } 
+      };
 
-      Plotly.newPlot('chartML', [traceForecast], {
-        title: { text: `Previsão Auto-Regressiva (${steps} períodos adiante)`, font: { size: 14 } },
-        margin: { t: 40, r: 20, l: 40, b: 40 },
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent'
-      }, { responsive: true });
+      const layout = WeatherChartsTheme.getLayout(`Previsão Estocástica Auto-Regressiva (${steps} passos adiante)`);
+      layout.xaxis.title = 'Horizonte Futuro';
+      layout.yaxis.title = `Magnitude de ${target}`;
+      Plotly.newPlot('chartML', [traceForecast], layout, { responsive: true, displayModeBar: false });
     }
   } catch (err) {
     alert(err.message);
   } finally {
     btn.disabled = false;
-    btn.innerText = 'Treinar e Analisar';
+    btn.innerHTML = originalHTML;
   }
 }
 </script>

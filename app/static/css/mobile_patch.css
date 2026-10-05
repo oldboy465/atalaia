@@ -1,0 +1,118 @@
+/* ==========================================================================
+   MOBILE & VIEWPORT OPTIMIZATIONS (TOUCH-FRIENDLY SYSTEM)
+   Polimento fino de toques, safe-areas de celulares e responsividade
+   ========================================================================== */
+
+/* Prevenção de toques acidentais e melhoria de latência em telas touch */
+html {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Suporte às bordas infinitas de iPhones e Androids modernos (Notch/Safe Area) */
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Ajustes no Widget Comet Dial para Mobile */
+.comet-dial-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.comet-dial {
+  position: relative;
+  width: var(--cd-size, 200px);
+  height: var(--cd-size, 200px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.comet-dial-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.cd-readout {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.cd-value-container {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+}
+
+.cd-val {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.cd-unit {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--weather-sky);
+}
+
+.cd-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+/* Ajuste fino na grade de Analytics para telas verticais e tablets */
+@media (max-width: 1024px) {
+  .analytics-layout-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .metric-box-val {
+    font-size: 1.4rem;
+  }
+  
+  .comet-dial {
+    --cd-size: 175px !important;
+  }
+
+  .cd-val {
+    font-size: 1.85rem;
+  }
+
+  .main-content {
+    padding: 0 10px 88px 10px;
+  }
+
+  .glass-card {
+    padding: 14px;
+    border-radius: var(--radius-md);
+  }
+
+  /* Rolagem horizontal fluida para tabelas no mobile */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+}
