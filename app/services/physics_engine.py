@@ -48,10 +48,11 @@ class AtmosphericPhysics:
         """
         Calcula a Temperatura do Ponto de Orvalho (Td em °C)
         pela inversão da relação termodinâmica de Magnus-Tetens.
+        Protegido contra valores nulos de umidade relativa.
         """
         b = 17.27
         c = 237.3
-        rh_clamped = max(rh, 1e-4)
+        rh_clamped = max(1.0, min(100.0, rh))
         alpha = ((b * temp_c) / (c + temp_c)) + math.log(rh_clamped / 100.0)
         dp = (c * alpha) / (b - alpha)
         return round(dp, 2)
@@ -168,9 +169,9 @@ class AtmosphericPhysics:
     def calculate_rs_r0(cls, mq_raw: int, temp_c: float, rh: float) -> Dict[str, float]:
         """
         Calcula a resistência ôhmica do sensor (Rs), a resistência compensada e a razão Rs/R0.
+        Clamp estrito de ADC para 1..4094 para evitar divisão por zero ou números negativos.
         """
         adc = max(1.0, min(cls.ADC_MAX_VALUE - 1.0, float(mq_raw)))
-        # Divisor de tensão do sensor de gás: Rs = RL * (ADC_MAX - ADC) / ADC
         rs_raw = cls.RL_LOAD_RESISTANCE * ((cls.ADC_MAX_VALUE - adc) / adc)
         cor_factor = cls.mq135_environmental_correction_factor(temp_c, rh)
         rs_compensated = rs_raw / cor_factor
@@ -186,16 +187,16 @@ class AtmosphericPhysics:
     @classmethod
     def estimate_ppm_co2(cls, mq_raw: int, temp_c: float, rh: float) -> float:
         """
-        Estimação analítica de CO2 equivalente em PPM pela equação potencial:
-        PPM = a * (Rs / R0)^b
+        Estimação analítica de CO2 equivalente em PPM pela curva calibrada.
         """
         if mq_raw <= 0:
-            return 400.0  # Nível basal troposférico global
+            return 400.0
 
         metrics = cls.calculate_rs_r0(mq_raw, temp_c, rh)
         ratio = max(0.1, metrics["ratio"])
         try:
             ppm = cls.PPM_A * math.pow(ratio, cls.PPM_B)
+            # CO2 atmosférico típico entre 400 e 5000 PPM
             ppm_calibrated = max(400.0, min(5000.0, ppm + 380.0))
             return round(ppm_calibrated, 1)
         except (ValueError, OverflowError):
@@ -205,12 +206,13 @@ class AtmosphericPhysics:
     def calculate_iaq(cls, mq_raw: int, temp_c: float, rh: float) -> Dict[str, Any]:
         """
         Calcula o Índice Sintético de Qualidade do Ar (IAQ: 0 a 500).
-        0-50: Excelente | 51-100: Bom | 101-150: Moderado | 151-200: Atenção | >200: Crítico.
+        A faixa de ar limpo (400 a 450 ppm) é mapeada para 15 a 50 IAQ
+        para que o mostrador exiba leitura dinâmica ativa em vez de 0.0 estático.
         """
         ppm = cls.estimate_ppm_co2(mq_raw, temp_c, rh)
 
         if ppm <= 450.0:
-            iaq = ((ppm - 400.0) / 50.0) * 50.0
+            iaq = 15.0 + ((ppm - 400.0) / 50.0) * 35.0
             classificacao = "Excelente"
             cor = "#10b981"
         elif ppm <= 700.0:

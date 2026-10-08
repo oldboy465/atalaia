@@ -32,7 +32,8 @@ class ESPService:
     def extract_and_parse(cls) -> List[Dict[str, Any]]:
         """
         Descarrega todo o buffer Flash (LittleFS) do ESP32.
-        Filtra amostras de inicialização com erro (0.0/0.0) para não corromper os dials.
+        Aplica sanitização rigorosa descartando ruídos de memória desalinhada
+        e amostras de boot incompletas antes de gravar no banco.
         """
         ping_res = cls.ping()
         url = cls.BASE_URL if ping_res.get("online") else "http://192.168.4.1"
@@ -63,7 +64,7 @@ class ESPService:
 
         for sid in sorted(sessions.keys(), reverse=True):
             session_records = sessions[sid]
-            max_uptime = max(int(item["u"]) for item in session_records)
+            max_uptime = max(int(item.get("u", 0)) for item in session_records)
 
             for item in session_records:
                 temp = float(item.get("t", 0.0))
@@ -71,8 +72,15 @@ class ESPService:
                 up = int(item.get("u", 0))
                 mq_raw = int(item.get("mq", item.get("mq135_raw", 0)))
 
-                # Descarta leituras nulas causadas por delay de aquecimento do sensor
-                if temp <= 0.01 and hum <= 0.01:
+                # FILTROS DE INTEGRIDADE FÍSICA:
+                # 1. ADC do ESP32 é de 12 bits (faixa válida estrita: 0 a 4095).
+                # 2. Umidade não pode ser nula (evita Td em -105 °C).
+                # 3. Temperatura deve estar na faixa operacional real do DHT22.
+                if mq_raw > 4095 or mq_raw < 0:
+                    continue
+                if temp < 5.0 or temp > 65.0:
+                    continue
+                if hum < 10.0 or hum > 100.0:
                     continue
 
                 delta_sec = max_uptime - up
@@ -84,7 +92,7 @@ class ESPService:
                 calc["coletado_em"] = rec_time.strftime("%Y-%m-%d %H:%M:%S")
                 parsed.append(calc)
 
-            min_uptime = min(int(item["u"]) for item in session_records)
+            min_uptime = min(int(item.get("u", 0)) for item in session_records)
             session_duration_sec = max_uptime - min_uptime
             current_anchor_time = current_anchor_time - timedelta(seconds=session_duration_sec + 60)
 
