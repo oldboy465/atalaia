@@ -1,8 +1,7 @@
 /**
- * WEATHER CHARTS THEME v2.2 - HIGH CONTRAST & CLEAN MARGIN ENGINE
- * Corrige em definitivo o erro visual das capturas:
- * 1. Margem superior ampliada (t: 70px) para isolar o título da área dos eixos.
- * 2. Legendas deslocadas para fora do gráfico (y: 1.20) para nunca sobrepor barras ou boxplots.
+ * WEATHER CHARTS THEME v2.3 - HIGH CONTRAST & MULTIVARIATE GAS ENGINE
+ * 1. Margem superior ampliada (t: 72px) para isolar o título da área dos eixos.
+ * 2. Legendas deslocadas para fora do gráfico (y: 1.18) para nunca sobrepor séries.
  * 3. Grelhas suaves com opacidade calibrada, eliminando poluição visual.
  */
 
@@ -14,6 +13,7 @@ const WeatherChartsTheme = {
     rose: '#f43f5e',
     rain: '#60a5fa',
     drought: '#eab308',
+    gas: '#10b981',
     textMain: '#f8fafc',
     textMuted: '#94a3b8',
     gridSubtle: 'rgba(255, 255, 255, 0.05)',
@@ -36,7 +36,6 @@ const WeatherChartsTheme = {
       },
       paper_bgcolor: 'transparent',
       plot_bgcolor: 'transparent',
-      // Margem superior expandida para dar respiro aos títulos e legendas
       margin: { t: 72, r: 25, l: 48, b: 42 },
       legend: {
         orientation: 'h',

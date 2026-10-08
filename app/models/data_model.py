@@ -1,25 +1,33 @@
 from typing import Any, Dict, List, Optional
 import sqlite3
 from app.database import get_db
+from app.services.physics_engine import AtmosphericPhysics
 
 class DataModel:
     @staticmethod
     def ensure_schema_migrations() -> None:
         """
-        Garante defensivamente que as colunas essenciais adicionadas
-        (session_id, latitude, longitude) existam no banco SQLite.
+        Garante defensivamente que todas as colunas necessárias para
+        psicrometria, geolocalização e gases (MQ-135) existam no SQLite.
         """
         conn = get_db()
         cursor = conn.cursor()
         try:
-            # Verifica colunas da tabela coletas
             cursor.execute("PRAGMA table_info(coletas);")
             coletas_cols = [row["name"] for row in cursor.fetchall()]
+
             if "session_id" not in coletas_cols:
                 cursor.execute("ALTER TABLE coletas ADD COLUMN session_id INTEGER DEFAULT 1;")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_coletas_session ON coletas(session_id);")
+            if "mq135_raw" not in coletas_cols:
+                cursor.execute("ALTER TABLE coletas ADD COLUMN mq135_raw INTEGER DEFAULT 0;")
+            if "ppm_co2" not in coletas_cols:
+                cursor.execute("ALTER TABLE coletas ADD COLUMN ppm_co2 REAL DEFAULT 0.0;")
+            if "iaq_indice" not in coletas_cols:
+                cursor.execute("ALTER TABLE coletas ADD COLUMN iaq_indice REAL DEFAULT 0.0;")
 
-            # Verifica colunas da tabela locais
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_coletas_gases ON coletas(mq135_raw, ppm_co2, iaq_indice);")
+
             cursor.execute("PRAGMA table_info(locais);")
             locais_cols = [row["name"] for row in cursor.fetchall()]
             if "latitude" not in locais_cols:
@@ -103,10 +111,6 @@ class DataModel:
 
     @staticmethod
     def list_locais(only_with_data: bool = False) -> List[Dict[str, Any]]:
-        """
-        Lista os locais cadastrados. Quando only_with_data=True, traz apenas
-        os locais que possuem coletas registradas.
-        """
         DataModel.ensure_schema_migrations()
         conn = get_db()
         cursor = conn.cursor()
@@ -143,6 +147,9 @@ class DataModel:
                     ROUND(AVG(c.ponto_orvalho), 2) as media_orvalho,
                     ROUND(AVG(c.umidade_absoluta), 2) as media_absoluta,
                     ROUND(AVG(c.pressao_vapor_real), 2) as media_pressao,
+                    ROUND(AVG(c.mq135_raw), 0) as media_mq135,
+                    ROUND(AVG(c.ppm_co2), 1) as media_ppm,
+                    ROUND(AVG(c.iaq_indice), 1) as media_iaq,
                     MAX(c.coletado_em) as ultima_coleta,
                     MIN(c.coletado_em) as primeira_coleta
                 FROM locais l
@@ -190,8 +197,9 @@ class DataModel:
             INSERT INTO coletas (
                 local_id, uptime_sec, session_id, temperatura, umidade,
                 temperatura_kelvin, pressao_vapor_sat, pressao_vapor_real,
-                ponto_orvalho, umidade_absoluta, indice_calor, coletado_em
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ponto_orvalho, umidade_absoluta, indice_calor,
+                mq135_raw, ppm_co2, iaq_indice, coletado_em
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         data = [
             (
@@ -205,7 +213,10 @@ class DataModel:
                 float(r['pressao_vapor_real']),
                 float(r['ponto_orvalho']), 
                 float(r['umidade_absoluta']), 
-                float(r['indice_calor']), 
+                float(r['indice_calor']),
+                int(r.get('mq135_raw', r.get('mq', 0))),
+                float(r.get('ppm_co2', 0.0)),
+                float(r.get('iaq_indice', 0.0)),
                 str(r['coletado_em'])
             )
             for r in records
@@ -225,10 +236,6 @@ class DataModel:
         data_inicio: Optional[str] = None,
         data_fim: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """
-        Retorna as amostras para os gráficos com garantia de trazer
-        os dados cronológicos corretos e sem truncar o histórico do local.
-        """
         DataModel.ensure_schema_migrations()
         conn = get_db()
         cursor = conn.cursor()
@@ -264,10 +271,6 @@ class DataModel:
         data_inicio: Optional[str] = None,
         data_fim: Optional[str] = None
     ) -> Dict[str, Any]:
-        """
-        Calcula o resumo agregado completo diretamente no motor SQL,
-        evitando que amostragens parciais provoquem números estáticos nos cards.
-        """
         DataModel.ensure_schema_migrations()
         conn = get_db()
         cursor = conn.cursor()
@@ -296,10 +299,15 @@ class DataModel:
                     ROUND(AVG(c.ponto_orvalho), 2) as avg_dp,
                     ROUND(AVG(c.umidade_absoluta), 2) as avg_ah,
                     ROUND(AVG(c.pressao_vapor_real), 2) as avg_ea,
+                    ROUND(AVG(c.mq135_raw), 0) as avg_mq,
+                    ROUND(AVG(c.ppm_co2), 1) as avg_ppm,
+                    ROUND(AVG(c.iaq_indice), 1) as avg_iaq,
                     MAX(c.temperatura) as max_temp,
                     MIN(c.temperatura) as min_temp,
                     MAX(c.umidade) as max_hum,
                     MIN(c.umidade) as min_hum,
+                    MAX(c.mq135_raw) as max_mq,
+                    MIN(c.mq135_raw) as min_mq,
                     MAX(c.coletado_em) as last_collected
                 FROM coletas c
                 JOIN locais l ON c.local_id = l.id
@@ -308,7 +316,6 @@ class DataModel:
             cursor.execute(query, tuple(params))
             row = cursor.fetchone()
             
-            # Última leitura pontual instantânea
             last_query = f"""
                 SELECT c.*, l.nome as local_nome
                 FROM coletas c
@@ -359,14 +366,17 @@ class DataModel:
 
             where_str = " AND ".join(where_clauses)
 
-            # Contagem total e estatísticas rápidas
             agg_query = f"""
                 SELECT 
                     COUNT(c.id) as total,
                     ROUND(AVG(c.temperatura), 2) as avg_temp,
                     ROUND(AVG(c.umidade), 2) as avg_hum,
+                    ROUND(AVG(c.mq135_raw), 0) as avg_mq,
+                    ROUND(AVG(c.iaq_indice), 1) as avg_iaq,
                     MAX(c.temperatura) as max_temp,
-                    MIN(c.temperatura) as min_temp
+                    MIN(c.temperatura) as min_temp,
+                    MAX(c.mq135_raw) as max_mq,
+                    MIN(c.mq135_raw) as min_mq
                 FROM coletas c
                 JOIN locais l ON c.local_id = l.id
                 WHERE {where_str}
@@ -402,8 +412,12 @@ class DataModel:
                 "stats": {
                     "avg_temp": agg_row["avg_temp"] if agg_row and agg_row["avg_temp"] is not None else 0,
                     "avg_hum": agg_row["avg_hum"] if agg_row and agg_row["avg_hum"] is not None else 0,
+                    "avg_mq": agg_row["avg_mq"] if agg_row and agg_row["avg_mq"] is not None else 0,
+                    "avg_iaq": agg_row["avg_iaq"] if agg_row and agg_row["avg_iaq"] is not None else 0,
                     "max_temp": agg_row["max_temp"] if agg_row and agg_row["max_temp"] is not None else 0,
-                    "min_temp": agg_row["min_temp"] if agg_row and agg_row["min_temp"] is not None else 0
+                    "min_temp": agg_row["min_temp"] if agg_row and agg_row["min_temp"] is not None else 0,
+                    "max_mq": agg_row["max_mq"] if agg_row and agg_row["max_mq"] is not None else 0,
+                    "min_mq": agg_row["min_mq"] if agg_row and agg_row["min_mq"] is not None else 0
                 }
             }
         finally:
@@ -424,6 +438,68 @@ class DataModel:
             conn.close()
 
     @staticmethod
+    def update_coleta_inline(
+        coleta_id: int, 
+        novo_timestamp: str, 
+        temp: Optional[float] = None, 
+        hum: Optional[float] = None, 
+        mq: Optional[int] = None
+    ) -> None:
+        """
+        Atualiza pontualmente timestamp, temperatura, umidade e MQ-135 de uma coleta,
+        recalculando com exatidão matemática todas as variáveis atmosféricas derivadas.
+        """
+        DataModel.ensure_schema_migrations()
+        conn = get_db()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT temperatura, umidade, mq135_raw FROM coletas WHERE id = ?", (coleta_id,))
+            current = cursor.fetchone()
+            if not current:
+                return
+
+            t_val = float(temp) if temp is not None else float(current["temperatura"])
+            h_val = float(hum) if hum is not None else float(current["umidade"])
+            mq_val = int(mq) if mq is not None else int(current["mq135_raw"])
+
+            # Chamada estrita com 3 argumentos compatível com AtmosphericPhysics.compute_all
+            calc = AtmosphericPhysics.compute_all(t_val, h_val, mq_val)
+
+            cursor.execute("""
+                UPDATE coletas SET 
+                    coletado_em = ?,
+                    temperatura = ?,
+                    umidade = ?,
+                    temperatura_kelvin = ?,
+                    pressao_vapor_sat = ?,
+                    pressao_vapor_real = ?,
+                    ponto_orvalho = ?,
+                    umidade_absoluta = ?,
+                    indice_calor = ?,
+                    mq135_raw = ?,
+                    ppm_co2 = ?,
+                    iaq_indice = ?
+                WHERE id = ?
+            """, (
+                novo_timestamp,
+                float(calc["temperatura"]),
+                float(calc["umidade"]),
+                float(calc["temperatura_kelvin"]),
+                float(calc["pressao_vapor_sat"]),
+                float(calc["pressao_vapor_real"]),
+                float(calc["ponto_orvalho"]),
+                float(calc["umidade_absoluta"]),
+                float(calc["indice_calor"]),
+                int(calc["mq135_raw"]),
+                float(calc["ppm_co2"]),
+                float(calc["iaq_indice"]),
+                coleta_id
+            ))
+            conn.commit()
+        finally:
+            conn.close()
+
+    @staticmethod
     def delete_coleta(coleta_id: int) -> None:
         DataModel.ensure_schema_migrations()
         conn = get_db()
@@ -433,7 +509,6 @@ class DataModel:
             conn.commit()
         finally:
             conn.close()
-        # Remove o local automaticamente se esta era sua última coleta
         DataModel.cleanup_orphaned_locais()
 
     @staticmethod
@@ -451,16 +526,11 @@ class DataModel:
             deleted = cursor.rowcount if cursor.rowcount is not None else 0
         finally:
             conn.close()
-        # Faxina em lote de quaisquer locais que tenham ficado sem coletas
         DataModel.cleanup_orphaned_locais()
         return deleted
 
     @staticmethod
     def clear_local_coletas(local_id: int) -> int:
-        """
-        Exclui todas as coletas vinculadas a um determinado local
-        e remove o cadastro do local correspondente.
-        """
         DataModel.ensure_schema_migrations()
         conn = get_db()
         cursor = conn.cursor()

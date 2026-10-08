@@ -24,7 +24,7 @@
   --text-dim: #64748b;
   --text-glow: rgba(248, 250, 252, 0.95);
 
-  /* Identidade Climática Vetorial */
+  /* Identidade Climática e de Qualidade do Ar */
   --weather-sky: #38bdf8;
   --weather-sky-glow: rgba(56, 189, 248, 0.4);
   --weather-humidity: #34d399;
@@ -35,6 +35,8 @@
   --weather-rain-glow: rgba(96, 165, 250, 0.45);
   --weather-storm: #f43f5e;
   --weather-drought: #eab308;
+  --gas-iaq: #10b981;
+  --gas-iaq-glow: rgba(16, 185, 129, 0.4);
 
   /* Status Hardware */
   --online: #10b981;
@@ -58,7 +60,7 @@
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Reset Global & Otimização de Render */
+/* Reset Global & Otimização de Renderização */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -77,7 +79,7 @@ html, body {
   overflow-x: hidden;
 }
 
-/* --- CANVAS DO CLIMA: ACELERADO POR GPU SEM LENTIDÃO --- */
+/* --- CANVAS DO CLIMA: ACELERADO POR GPU --- */
 #weatherCanvasBackdrop {
   position: fixed;
   inset: 0;
@@ -360,7 +362,7 @@ html, body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- CARDS COM EFEITO FROSTED GLASS ATMOSFÉRICO --- */
+/* --- CARDS FROSTED GLASS --- */
 .glass-card {
   background: var(--surface-glass-card);
   backdrop-filter: blur(16px);
@@ -608,7 +610,7 @@ select.form-control option {
   filter: drop-shadow(0 0 6px var(--weather-sky-glow));
 }
 
-/* --- RESPONSIVIDADE TOUCH --- */
+/* --- RESPONSIVIDADE TOUCH & MOBILE --- */
 @media (max-width: 960px) {
   .topbar {
     top: 0;

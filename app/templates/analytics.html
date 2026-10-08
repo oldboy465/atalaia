@@ -9,7 +9,7 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--weather-sky)" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
       Laboratório de Análise Técnica, Regressão & Séries Temporais
     </h2>
-    <p style="font-size: 0.8rem; color: var(--text-muted);">Calibração de modelos supervisionados multivariados, estimativa residual e auto-regressão estocástica</p>
+    <p style="font-size: 0.8rem; color: var(--text-muted);">Calibração de modelos supervisionados multivariados com suporte pleno a variáveis psicrométricas e concentrações gasosas</p>
   </div>
 
   <div style="display: grid; grid-template-columns: 340px 1fr; gap: 24px;" class="analytics-layout-grid">
@@ -58,7 +58,8 @@
             <option value="umidade">Umidade Relativa (%)</option>
             <option value="indice_calor">Sensação Térmica (°C)</option>
             <option value="ponto_orvalho">Ponto de Orvalho (°C)</option>
-            <option value="pressao_vapor_real">Pressão Real Ea (hPa)</option>
+            <option value="iaq_indice">Qualidade do Ar (IAQ)</option>
+            <option value="ppm_co2">CO₂ Equivalente (PPM)</option>
           </select>
         </div>
 
@@ -67,10 +68,10 @@
           <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.82rem; margin-top: 8px; background: rgba(6, 14, 26, 0.5); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="umidade" checked> Umidade Relativa (%)</label>
             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="indice_calor" checked> Sensação Térmica (°C)</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="mq135_raw" checked> MQ-135 Bruto (RAW)</label>
             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="ponto_orvalho"> Ponto de Orvalho (°C)</label>
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="umidade_absoluta"> Densidade Absoluta (g/m³)</label>
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="pressao_vapor_sat"> Pressão Saturação Es (hPa)</label>
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="pressao_vapor_real"> Pressão Real Ea (hPa)</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="umidade_absoluta"> Umidade Absoluta (g/m³)</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main);"><input type="checkbox" class="feature-cb" value="ppm_co2"> CO₂ Equivalente (PPM)</label>
           </div>
         </div>
       </div>
@@ -82,6 +83,8 @@
           <select id="arTarget" class="form-control">
             <option value="temperatura">Temperatura do Ar (°C)</option>
             <option value="umidade">Umidade Relativa (%)</option>
+            <option value="iaq_indice">Índice IAQ (Qualidade do Ar)</option>
+            <option value="ppm_co2">CO₂ Equivalente (PPM)</option>
           </select>
         </div>
         <div class="form-group">
@@ -111,7 +114,7 @@
         <div class="metric-box">
           <div class="metric-box-title">Raiz Erro Médio (RMSE)</div>
           <div class="metric-box-val" id="valRMSE" style="color: var(--weather-drought);">--</div>
-          <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Penalização de Grandes Erros</div>
+          <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Penalização de Desvios</div>
         </div>
         <div class="metric-box">
           <div class="metric-box-title">Erro Absoluto Médio (MAE)</div>
@@ -120,12 +123,12 @@
         </div>
       </div>
 
-      <!-- Gráfico Principal: Ajuste e Validação Holdout -->
+      <!-- Gráfico Principal: Ajuste Holdout -->
       <div class="glass-card" style="padding: 18px; margin-bottom: 20px;">
         <div id="chartML" style="height: 380px; width: 100%;"></div>
       </div>
 
-      <!-- Gráfico Secundário: Histograma de Resíduos Térmicos -->
+      <!-- Gráfico Secundário: Resíduos -->
       <div class="glass-card" style="padding: 18px; margin-bottom: 20px;" id="residualCard">
         <div id="chartResiduals" style="height: 240px; width: 100%;"></div>
       </div>
@@ -136,7 +139,7 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
           Parâmetros, Pesos e Coeficientes Estimados
         </h4>
-        <pre id="paramsOutput" style="background: rgba(6, 14, 26, 0.85); border: 1px solid var(--border-subtle); color: var(--weather-sky); padding: 14px; border-radius: var(--radius-sm); font-size: 0.8rem; font-family: monospace; overflow-x: auto; max-height: 220px;">Execute uma calibração para inspecionar os tensores e coeficientes.</pre>
+        <pre id="paramsOutput" style="background: rgba(6, 14, 26, 0.85); border: 1px solid var(--border-subtle); color: var(--weather-sky); padding: 14px; border-radius: var(--radius-sm); font-size: 0.8rem; font-family: monospace; overflow-x: auto; max-height: 220px;">Execute um treinamento para inspecionar os pesos e coeficientes.</pre>
       </div>
     </div>
   </div>
@@ -168,13 +171,7 @@ async function runMLPipeline() {
 
   btn.disabled = true;
   const originalHTML = btn.innerHTML;
-  btn.innerHTML = `
-    <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
-      <path d="M12 2a10 10 0 0 1 10 10" stroke-opacity="1"></path>
-    </svg>
-    Calculando Modelos...
-  `;
+  btn.innerHTML = 'Calculando Modelos...';
 
   try {
     if (task === 'supervised') {
@@ -185,7 +182,7 @@ async function runMLPipeline() {
       const modelType = document.getElementById('mlAlgorithm').value;
 
       if (features.length === 0) {
-        alert('Selecione ao menos uma Variável Preditiva (X) diferente da Variável Alvo.');
+        alert('Selecione ao menos uma Covariável Preditiva (X) diferente da Variável Alvo.');
         return;
       }
 
@@ -218,7 +215,6 @@ async function runMLPipeline() {
       layout.yaxis.title = `Magnitude de ${target}`;
       Plotly.newPlot('chartML', [traceActual, tracePred], layout, { responsive: true, displayModeBar: false });
 
-      // Gráfico de Resíduos (Diferença Observado - Predito)
       const residuals = data.actual.map((act, i) => act - data.predicted[i]);
       const traceResiduals = {
         x: indices, y: residuals, type: 'bar',
@@ -251,7 +247,7 @@ async function runMLPipeline() {
         marker: { size: 6, color: '#10b981' } 
       };
 
-      const layout = WeatherChartsTheme.getLayout(`Previsão Estocástica Auto-Regressiva (${steps} passos adiante)`);
+      const layout = WeatherChartsTheme.getLayout(`Previsão Estocástica Auto-Regressiva (${steps} passos)`);
       layout.xaxis.title = 'Horizonte Futuro';
       layout.yaxis.title = `Magnitude de ${target}`;
       Plotly.newPlot('chartML', [traceForecast], layout, { responsive: true, displayModeBar: false });

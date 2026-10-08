@@ -1,7 +1,7 @@
 /**
- * PROJETO ATALAIA v1.2 - CORE CONTROLLER
- * Gerencia ciclo de vida da conexão, comandos de controle de energia (Wake/Sleep),
- * modal de extração de dados e atualização dinâmica de listas suspensas.
+ * PROJETO ATALAIA v2.0 - CORE CONTROLLER & HARDWARE BRIDGE
+ * Gerencia ciclo de vida da conexão, telemetria ao vivo, controles de energia,
+ * sincronização de buffers na Flash e atualização dinâmica de interfaces.
  */
 
 const AtalaiaApp = {
@@ -29,9 +29,9 @@ async function checkESPStatus() {
 
     if (data.online) {
       dot.className = 'status-dot online';
-      const modeStr = data.wifi_mode ? ` (${data.wifi_mode})` : '';
       const regs = data.buffer_count !== undefined ? data.buffer_count : 0;
-      txt.innerText = `Online${modeStr} [${regs}/7200]`;
+      const gasRaw = data.mq135_raw !== undefined ? ` | Gas: ${data.mq135_raw}` : '';
+      txt.innerText = `Online [${regs}/8640]${gasRaw}`;
       txt.style.color = '#34d399';
     } else {
       dot.className = 'status-dot offline';
@@ -53,7 +53,7 @@ function startStatusPolling() {
   AtalaiaApp.timerId = setInterval(checkESPStatus, AtalaiaApp.pollIntervalMs);
 }
 
-// COMANDO PARA LIGAR / RECONECTAR NÓ SENSORIAL
+// COMANDO PARA RECONECTAR / ATIVAR NÓ SENSORIAL
 async function triggerWakeup() {
   const btn = document.getElementById('btnWakeup');
   if (btn) {
@@ -76,9 +76,9 @@ async function triggerWakeup() {
   }
 }
 
-// COMANDO PARA COLOCAR EM DEEP-SLEEP (DESLIGAR NÓ)
+// COMANDO PARA SUSPENDER NÓ SENSORIAL
 async function triggerShutdown() {
-  const confirmMsg = 'Deseja colocar o nó ESP32 em Deep-Sleep para economia de bateria?';
+  const confirmMsg = 'Deseja suspender a leitura dos sensores e colocar o nó em modo economia de bateria?';
   if (!confirm(confirmMsg)) return;
 
   const btn = document.getElementById('btnShutdown');
@@ -118,7 +118,6 @@ async function refreshLocaisSelects() {
         select.appendChild(opt);
       });
 
-      // Preserva o valor selecionado se o local ainda existir com dados
       if (currentValue && locais.some(l => String(l.id) === String(currentValue))) {
         select.value = currentValue;
       } else {
@@ -167,7 +166,7 @@ function handleModalLocalChange() {
   }
 }
 
-// Extração de dados da memória Flash
+// Extração de dados da memória Flash com suporte ao MQ-135
 async function executeExtraction() {
   const nome = document.getElementById('modalLocalNome').value.trim();
   const desc = document.getElementById('modalLocalDesc').value.trim();
@@ -176,13 +175,13 @@ async function executeExtraction() {
   const btn = document.getElementById('btnConfirmExtract');
 
   if (!nome) {
-    alert('Informe o nome da estação meteorológica para indexação.');
+    alert('Informe a identificação da estação meteorológica.');
     return;
   }
 
   btn.disabled = true;
   const originalLabel = btn.innerHTML;
-  btn.innerHTML = 'Extraindo...';
+  btn.innerHTML = 'Sincronizando Buffer Flash...';
 
   try {
     const res = await fetch('/api/esp/extract', {
@@ -198,11 +197,11 @@ async function executeExtraction() {
     const result = await res.json();
 
     if (res.ok) {
-      alert(`Sucesso! ${result.count} amostras descarregadas com sucesso.`);
+      alert(`Sucesso! ${result.count} amostras descarregadas e processadas na física de gases.`);
       closeExtractModal();
       window.location.reload();
     } else {
-      alert('Falha na extração: ' + (result.error || 'Erro retornado pelo ESP32.'));
+      alert('Falha na extração: ' + (result.error || 'Erro reportado pelo nó ESP32.'));
     }
   } catch (err) {
     alert('Erro de comunicação com o servidor Flask.');

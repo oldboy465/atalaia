@@ -8,9 +8,9 @@
     <div>
       <h2 style="font-size: 1.4rem; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 10px;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--weather-sky)" stroke-width="2.2"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-        Módulo Atmosfera: Monitoramento & Probabilidades
+        Módulo Atmosfera: Monitoramento, Gases & Probabilidades
       </h2>
-      <p style="font-size: 0.82rem; color: var(--text-muted);">Análise microclimática de precisão, indicadores de chuva, dessecação e dinâmica psicrométrica</p>
+      <p style="font-size: 0.82rem; color: var(--text-muted);">Análise microclimática de precisão, indicadores de chuva, qualidade do ar (MQ-135) e psicrometria contínua</p>
     </div>
     
     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
@@ -27,10 +27,10 @@
     </div>
   </div>
 
-  <!-- NÚCLEO 1: OS GAUGES DE PRECISÃO TOTALMENTE CENTRALIZADOS -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-bottom: 26px;">
+  <!-- NÚCLEO 1: OS 4 GAUGES DE PRECISÃO TOTALMENTE CENTRALIZADOS -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; margin-bottom: 26px;">
     <!-- Dial 1: Temperatura Real -->
-    <div class="glass-card" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 22px;">
+    <div class="glass-card" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
       <div id="dialTempContainer" style="display: flex; justify-content: center; align-items: center; width: 100%;"></div>
       <div style="display: flex; justify-content: space-between; width: 100%; max-width: 220px; margin-top: 10px; font-size: 0.74rem; color: var(--text-muted); border-top: 1px solid var(--border-subtle); padding-top: 8px;">
         <span>Escala: 0 a 60°C</span>
@@ -39,69 +39,133 @@
     </div>
 
     <!-- Dial 2: Umidade Relativa -->
-    <div class="glass-card" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 22px;">
+    <div class="glass-card" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
       <div id="dialHumContainer" style="display: flex; justify-content: center; align-items: center; width: 100%;"></div>
       <div style="display: flex; justify-content: space-between; width: 100%; max-width: 220px; margin-top: 10px; font-size: 0.74rem; color: var(--text-muted); border-top: 1px solid var(--border-subtle); padding-top: 8px;">
-        <span>Faixa Conforto: 40-60%</span>
+        <span>Conforto: 40-60%</span>
         <span id="humMinMax">Min: -- | Max: --</span>
       </div>
     </div>
 
     <!-- Dial 3: Sensação Térmica (Heat Index) -->
-    <div class="glass-card" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 22px;">
+    <div class="glass-card" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
       <div id="dialHIContainer" style="display: flex; justify-content: center; align-items: center; width: 100%;"></div>
       <div style="display: flex; justify-content: space-between; width: 100%; max-width: 220px; margin-top: 10px; font-size: 0.74rem; color: var(--text-muted); border-top: 1px solid var(--border-subtle); padding-top: 8px;">
-        <span>Índice NOAA / Rothfusz</span>
+        <span>Índice Rothfusz</span>
         <span id="statusHI">Estável</span>
+      </div>
+    </div>
+
+    <!-- Dial 4: Qualidade do Ar (IAQ / MQ-135) -->
+    <div class="glass-card" style="margin-bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
+      <div id="dialIAQContainer" style="display: flex; justify-content: center; align-items: center; width: 100%;"></div>
+      <div style="display: flex; justify-content: space-between; width: 100%; max-width: 220px; margin-top: 10px; font-size: 0.74rem; color: var(--text-muted); border-top: 1px solid var(--border-subtle); padding-top: 8px;">
+        <span>MQ-135 Calibrado</span>
+        <span id="statusIAQ" style="font-weight: 700; color: #34d399;">Excelente</span>
       </div>
     </div>
   </div>
 
-  <!-- NÚCLEO 2: CARTÕES PREDITIVOS DE CHUVA, SECURA E VAPOR PSICROMÉTRICO -->
+  <!-- RÉGUA DINÂMICA DE QUALIDADE DO AR (ESTILO OMS) -->
+  <div class="glass-card" style="padding: 18px; margin-bottom: 24px; border-left: 4px solid #10b981;" id="iaqCardWrapper">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+      <div>
+        <h3 style="font-size: 0.95rem; font-weight: 700; color: #ffffff;">Régua de Pureza do Ar & Gases (MQ-135)</h3>
+        <p style="font-size: 0.74rem; color: var(--text-muted);">Índice Sintético de Qualidade do Ar (IAQ) compensado higrotermicamente e CO₂ equivalente</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span id="iaqRawPill" style="font-size: 0.75rem; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 6px;">
+          ADC: -- RAW | CO₂: -- ppm
+        </span>
+        <span id="iaqStatusBadge" style="padding: 5px 14px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35);">
+          Avaliando Pureza...
+        </span>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; font-size: 0.75rem;">
+      <div id="zoneIAQExcelente" class="metric-box" style="padding: 12px; border-color: rgba(16, 185, 129, 0.3);">
+        <strong style="color: #34d399; display: block; margin-bottom: 3px;">Excelente (0 - 50)</strong>
+        <p style="color: var(--text-muted); font-size: 0.7rem;">Ar puro, livre de contaminação e ventilação ideal.</p>
+      </div>
+
+      <div id="zoneIAQBoa" class="metric-box" style="padding: 12px; border-color: rgba(56, 189, 248, 0.25);">
+        <strong style="color: #38bdf8; display: block; margin-bottom: 3px;">Boa (51 - 100)</strong>
+        <p style="color: var(--text-muted); font-size: 0.7rem;">Qualidade aceitável em ambientes habitados.</p>
+      </div>
+
+      <div id="zoneIAQModerada" class="metric-box" style="padding: 12px; border-color: rgba(234, 179, 8, 0.2);">
+        <strong style="color: #facc15; display: block; margin-bottom: 3px;">Moderada (101 - 150)</strong>
+        <p style="color: var(--text-muted); font-size: 0.7rem;">Saturação leve de CO₂ e compostos orgânicos.</p>
+      </div>
+
+      <div id="zoneIAQAtencao" class="metric-box" style="padding: 12px; border-color: rgba(249, 115, 22, 0.2);">
+        <strong style="color: #fb923c; display: block; margin-bottom: 3px;">Atenção (151 - 200)</strong>
+        <p style="color: var(--text-muted); font-size: 0.7rem;">Desconforto, sonolência e acúmulo de vapores.</p>
+      </div>
+
+      <div id="zoneIAQCritica" class="metric-box" style="padding: 12px; border-color: rgba(239, 68, 68, 0.2);">
+        <strong style="color: #f87171; display: block; margin-bottom: 3px;">Crítica (&gt; 200)</strong>
+        <p style="color: var(--text-muted); font-size: 0.7rem;">Concentração alta de fumaça, COVs ou CO₂.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- NÚCLEO 2: CARTÕES PREDITIVOS DE CHUVA, SECURA, BOLOR E ESTRESSE COMPOSTO -->
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 26px;">
     <!-- Probabilidade de Chuva -->
     <div class="metric-box" style="border-left: 4px solid var(--weather-rain); text-align: left; padding: 18px;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <span class="metric-box-title">Probabilidade de Chuva</span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--weather-rain)" stroke-width="2"><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"></path><line x1="8" y1="19" x2="8" y2="21"></line><line x1="8" y1="13" x2="8" y2="15"></line><line x1="16" y1="19" x2="16" y2="21"></line><line x1="16" y1="13" x2="16" y2="15"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="12" y1="15" x2="12" y2="17"></line></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--weather-rain)" stroke-width="2"><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"></path><line x1="8" y1="19" x2="8" y2="21"></line><line x1="8" y1="13" x2="8" y2="15"></line><line x1="16" y1="19" x2="16" y2="21"></line><line x1="16" y1="13" x2="16" y2="15"></line></svg>
       </div>
       <div class="metric-box-val" id="cardRainProb" style="color: var(--weather-rain);">--<span> %</span></div>
-      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;" id="descRainProb">Avaliando ponto de saturação...</div>
+      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;" id="descRainProb">Avaliando saturação...</div>
     </div>
 
     <!-- Índice de Secura / Aridez -->
     <div class="metric-box" style="border-left: 4px solid var(--weather-drought); text-align: left; padding: 18px;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span class="metric-box-title">Índice de Secura / Aridez</span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--weather-drought)" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <span class="metric-box-title">Índice de Secura</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--weather-drought)" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line></svg>
       </div>
       <div class="metric-box-val" id="cardDroughtIndex" style="color: var(--weather-drought);">--<span> %</span></div>
       <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;" id="descDroughtIndex">Avaliando déficit evaporativo...</div>
     </div>
 
-    <!-- Ponto de Orvalho (Td) -->
-    <div class="metric-box" style="border-left: 4px solid var(--weather-sky); text-align: left; padding: 18px;">
+    <!-- Indicador de Bolor / Fungos -->
+    <div class="metric-box" style="border-left: 4px solid var(--weather-storm); text-align: left; padding: 18px;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span class="metric-box-title">Ponto de Orvalho (Td)</span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--weather-sky)" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+        <span class="metric-box-title">Risco Fúngico / Bolor</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--weather-storm)" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
       </div>
-      <div class="metric-box-val" id="cardDP">--<span> °C</span></div>
-      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;">Condensação do ar (Magnus)</div>
+      <div class="metric-box-val" id="cardMoldRisk" style="color: var(--weather-storm);">--<span> %</span></div>
+      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;" id="descMoldRisk">Avaliando janela térmica e RH...</div>
     </div>
 
-    <!-- Déficit de Pressão de Vapor (VPD) -->
-    <div class="metric-box" style="border-left: 4px solid var(--weather-humidity); text-align: left; padding: 18px;">
+    <!-- Estresse Composto (AQSI) -->
+    <div class="metric-box" style="border-left: 4px solid var(--weather-heat); text-align: left; padding: 18px;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span class="metric-box-title">Déficit de Pressão (VPD)</span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--weather-humidity)" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+        <span class="metric-box-title">Estresse Ambiental (AQSI)</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--weather-heat)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
       </div>
-      <div class="metric-box-val" id="cardVPD">--<span> kPa</span></div>
-      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;">Gradiente de evaporação livre</div>
+      <div class="metric-box-val" id="cardAQSI" style="color: var(--weather-heat);">--<span> %</span></div>
+      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;">União HI + VPD + Gases</div>
     </div>
   </div>
 
   <!-- NÚCLEO 3: GRANDEZAS PSICROMÉTRICAS ADICIONAIS -->
   <div class="grid-metrics">
+    <div class="metric-box">
+      <div class="metric-box-title">Ponto de Orvalho (Td)</div>
+      <div class="metric-box-val" id="cardDP">--<span> °C</span></div>
+      <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Condensação do vapor</div>
+    </div>
+    <div class="metric-box">
+      <div class="metric-box-title">Déficit de Pressão (VPD)</div>
+      <div class="metric-box-val" id="cardVPD">--<span> kPa</span></div>
+      <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Pressão de dessecação</div>
+    </div>
     <div class="metric-box">
       <div class="metric-box-title">Umidade Absoluta (AH)</div>
       <div class="metric-box-val" id="cardAH">--<span> g/m³</span></div>
@@ -110,17 +174,7 @@
     <div class="metric-box">
       <div class="metric-box-title">Pressão Vapor Real (Ea)</div>
       <div class="metric-box-val" id="cardEa">--<span> hPa</span></div>
-      <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Pressão exercida pelo vapor</div>
-    </div>
-    <div class="metric-box">
-      <div class="metric-box-title">Pressão Saturação (Es)</div>
-      <div class="metric-box-val" id="cardEs">--<span> hPa</span></div>
-      <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Capacidade máxima de retenção</div>
-    </div>
-    <div class="metric-box">
-      <div class="metric-box-title">Temperatura Absoluta</div>
-      <div class="metric-box-val" id="cardKelvin">--<span> K</span></div>
-      <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Escala termodinâmica</div>
+      <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Pressão do vapor livre</div>
     </div>
   </div>
 
@@ -136,7 +190,6 @@
       </span>
     </div>
 
-    <!-- Régua Visual Segmentada com Iluminação Dinâmica -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; font-size: 0.75rem;">
       <div id="zoneEmergencia" class="metric-box" style="padding: 12px; border-color: rgba(239, 68, 68, 0.2);">
         <strong style="color: #f87171; display: block; margin-bottom: 3px;">Emergência (&lt; 12%)</strong>
@@ -165,25 +218,23 @@
     </div>
   </div>
 
-  <!-- PAINEL 1 DE GRÁFICOS: SÉRIE TEMPORAL & ISOLINHAS PSICROMÉTRICAS -->
+  <!-- PAINEL 1 DE GRÁFICOS: SÉRIE TEMPORAL TRIVARIADA & GASES VS UMIDADE -->
   <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px;" class="charts-double-row">
     <div class="glass-card" style="padding: 18px; margin-bottom: 0;">
       <div id="chartTimeSeries" style="height: 380px; width: 100%;"></div>
     </div>
     <div class="glass-card" style="padding: 18px; margin-bottom: 0;">
-      <div id="chartHeatmap" style="height: 380px; width: 100%;"></div>
+      <div id="chartGasScatter" style="height: 380px; width: 100%;"></div>
     </div>
   </div>
 
-  <!-- PAINEL 2 DE GRÁFICOS: BOXPLOTS E BARRAS DE TENDÊNCIA COM ESPAÇAMENTO LIMPO -->
+  <!-- PAINEL 2 DE GRÁFICOS: BOXPLOTS E BARRAS DE QUALIDADE DO AR -->
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;" class="charts-double-row">
-    <!-- Boxplot de Dispersão Estatística Térmica -->
     <div class="glass-card" style="padding: 18px; margin-bottom: 0;">
       <div id="chartBoxplots" style="height: 380px; width: 100%;"></div>
     </div>
-    <!-- Barras de Probabilidade Convectiva de Chuva & Secura Recente -->
     <div class="glass-card" style="padding: 18px; margin-bottom: 0;">
-      <div id="chartBarWeather" style="height: 380px; width: 100%;"></div>
+      <div id="chartBarGasTrends" style="height: 380px; width: 100%;"></div>
     </div>
   </div>
 
@@ -191,8 +242,8 @@
   <div class="glass-card" style="padding: 20px; margin-bottom: 0;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
       <div>
-        <h3 style="font-size: 1.05rem; font-weight: 700; color: #ffffff;">Quadro de Parâmetros e Momentos Estatísticos</h3>
-        <p style="font-size: 0.78rem; color: var(--text-muted);">Agregações assintóticas sobre as séries psicrométricas registradas</p>
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #ffffff;">Quadro de Parâmetros e Momentos Estatísticos (com Gases)</h3>
+        <p style="font-size: 0.78rem; color: var(--text-muted);">Agregações assintóticas sobre séries microclimáticas e de pureza atmosférica</p>
       </div>
       <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
         <input type="date" id="statsDateStart" class="form-control" style="width: 140px;" onchange="loadDescriptiveStats()">
@@ -241,6 +292,7 @@
 let dialTemp = null;
 let dialHum = null;
 let dialHI = null;
+let dialIAQ = null;
 
 function initDials() {
   dialTemp = new CometDialWidget('dialTempContainer', {
@@ -249,7 +301,7 @@ function initDials() {
     unit: '°C',
     label: 'Temperatura',
     accentColor: '#38bdf8',
-    size: 220,
+    size: 210,
     thickness: 10
   });
 
@@ -259,7 +311,7 @@ function initDials() {
     unit: '%',
     label: 'Umidade Relativa',
     accentColor: '#34d399',
-    size: 220,
+    size: 210,
     thickness: 10
   });
 
@@ -269,34 +321,84 @@ function initDials() {
     unit: '°C',
     label: 'Sensação Térmica',
     accentColor: '#fb923c',
-    size: 220,
+    size: 210,
+    thickness: 10
+  });
+
+  dialIAQ = new CometDialWidget('dialIAQContainer', {
+    min: 0,
+    max: 500,
+    unit: 'IAQ',
+    label: 'Qualidade do Ar',
+    accentColor: '#10b981',
+    size: 210,
     thickness: 10
   });
 }
 
-function calcPsychrometrics(t, rh) {
-  const es = 6.1078 * Math.exp((17.27 * t) / (237.3 + t));
-  const ea = es * (rh / 100.0);
-  const alpha = ((17.27 * t) / (237.3 + t)) + Math.log(Math.max(rh, 0.001) / 100.0);
-  const dp = (237.3 * alpha) / (17.27 - alpha);
-  const ah = (216.7 * ea) / (t + 273.15);
-  const vpd = Math.max(0, es - ea) / 10.0;
+function updateIAQZones(iaq, ppm, raw) {
+  const badge = document.getElementById('iaqStatusBadge');
+  const pill = document.getElementById('iaqRawPill');
+  const statusLabel = document.getElementById('statusIAQ');
+  
+  if (pill) {
+    pill.innerText = `ADC: ${raw} RAW | CO₂: ${ppm.toFixed(1)} ppm`;
+  }
 
-  const dep = Math.max(0, t - dp);
-  let satScore = 10;
-  if (dep <= 1.0) satScore = 95;
-  else if (dep <= 2.5) satScore = 80 - (dep - 1) * 15;
-  else if (dep <= 5.0) satScore = 55 - (dep - 2.5) * 12;
-  else if (dep <= 8.0) satScore = 25 - (dep - 5) * 6;
-  const rhWeight = Math.pow(rh / 100, 2);
-  const rainProb = Math.min(99, Math.max(1, (satScore * 0.65) + (rh * 0.35 * rhWeight)));
+  ['zoneIAQExcelente', 'zoneIAQBoa', 'zoneIAQModerada', 'zoneIAQAtencao', 'zoneIAQCritica'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.style.boxShadow = 'none';
+      el.style.borderColor = 'var(--border-subtle)';
+      el.style.transform = 'none';
+    }
+  });
 
-  const rhDeficit = (100 - rh) / 100;
-  const thermalStress = Math.max(0, (t - 20) / 25);
-  const vpdFactor = Math.min(1, vpd / 2.5);
-  const drought = Math.min(100, Math.max(0, (rhDeficit * 0.45 + thermalStress * 0.25 + vpdFactor * 0.3) * 100));
+  const highlight = (id, color) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.style.borderColor = color;
+      el.style.boxShadow = `0 0 16px ${color}33`;
+      el.style.transform = 'translateY(-2px)';
+    }
+  };
 
-  return { es, ea, dp, ah, vpd, rainProb, drought, kelvin: t + 273.15 };
+  if (iaq <= 50) {
+    badge.innerText = 'EXCELENTE (Ar Puro)';
+    badge.style.background = 'rgba(16, 185, 129, 0.2)';
+    badge.style.color = '#34d399';
+    statusLabel.innerText = 'Excelente';
+    statusLabel.style.color = '#34d399';
+    highlight('zoneIAQExcelente', '#10b981');
+  } else if (iaq <= 100) {
+    badge.innerText = 'BOA (Aceitável)';
+    badge.style.background = 'rgba(56, 189, 248, 0.2)';
+    badge.style.color = '#38bdf8';
+    statusLabel.innerText = 'Boa';
+    statusLabel.style.color = '#38bdf8';
+    highlight('zoneIAQBoa', '#38bdf8');
+  } else if (iaq <= 150) {
+    badge.innerText = 'MODERADA (CO₂ Leve)';
+    badge.style.background = 'rgba(234, 179, 8, 0.2)';
+    badge.style.color = '#facc15';
+    statusLabel.innerText = 'Moderada';
+    statusLabel.style.color = '#facc15';
+    highlight('zoneIAQModerada', '#eab308');
+  } else if (iaq <= 200) {
+    badge.innerText = 'ATENÇÃO (Ar Viciado)';
+    badge.style.background = 'rgba(249, 115, 22, 0.2)';
+    badge.style.color = '#fb923c';
+    statusLabel.innerText = 'Atenção';
+    statusLabel.style.color = '#fb923c';
+    highlight('zoneIAQAtencao', '#f97316');
+  } else {
+    badge.innerText = 'CRÍTICA (Alerta Gases)';
+    badge.style.background = 'rgba(239, 68, 68, 0.2)';
+    badge.style.color = '#f87171';
+    statusLabel.innerText = 'Crítica';
+    statusLabel.style.color = '#f87171';
+    highlight('zoneIAQCritica', '#ef4444');
+  }
 }
 
 async function loadDashboardData() {
@@ -313,46 +415,27 @@ async function loadDashboardData() {
     const tempVal = Number(latest.temperatura);
     const humVal = Number(latest.umidade);
     const hiVal = Number(latest.indice_calor);
-
-    const phys = calcPsychrometrics(tempVal, humVal);
+    const mqVal = Number(latest.mq135_raw || 0);
+    const ppmVal = Number(latest.ppm_co2 || 400.0);
+    const iaqVal = Number(latest.iaq_indice || 0.0);
 
     if (dialTemp) dialTemp.setValue(tempVal);
     if (dialHum) dialHum.setValue(humVal);
     if (dialHI) dialHI.setValue(hiVal);
+    if (dialIAQ) dialIAQ.setValue(iaqVal);
 
-    document.getElementById('cardRainProb').innerHTML = `${phys.rainProb.toFixed(1)}<span> %</span>`;
-    document.getElementById('cardDroughtIndex').innerHTML = `${phys.drought.toFixed(1)}<span> %</span>`;
-    document.getElementById('cardDP').innerHTML = `${phys.dp.toFixed(1)}<span> °C</span>`;
-    document.getElementById('cardVPD').innerHTML = `${phys.vpd.toFixed(2)}<span> kPa</span>`;
+    updateIAQZones(iaqVal, ppmVal, mqVal);
 
-    const rainDesc = document.getElementById('descRainProb');
-    if (phys.rainProb >= 70) {
-      rainDesc.innerText = 'Alta saturação convectiva (Chuva iminente)';
-      rainDesc.style.color = '#60a5fa';
-    } else if (phys.rainProb >= 40) {
-      rainDesc.innerText = 'Massa de ar úmida com condensação moderada';
-      rainDesc.style.color = '#38bdf8';
-    } else {
-      rainDesc.innerText = 'Baixa probabilidade (Ar termicamente estável)';
-      rainDesc.style.color = 'var(--text-muted)';
-    }
+    // Atualização dos cards preditivos enriquecidos
+    document.getElementById('cardRainProb').innerHTML = `${Number(latest.probabilidade_chuva || 0).toFixed(1)}<span> %</span>`;
+    document.getElementById('cardDroughtIndex').innerHTML = `${Number(latest.indice_secura || 0).toFixed(1)}<span> %</span>`;
+    document.getElementById('cardMoldRisk').innerHTML = `${Number(latest.risco_bolor || 0).toFixed(1)}<span> %</span>`;
+    document.getElementById('cardAQSI').innerHTML = `${Number(latest.aqsi_estresse || 0).toFixed(1)}<span> %</span>`;
 
-    const droughtDesc = document.getElementById('descDroughtIndex');
-    if (phys.drought >= 60) {
-      droughtDesc.innerText = 'Dessecação intensa (Alto estresse térmico/hídrico)';
-      droughtDesc.style.color = '#f87171';
-    } else if (phys.drought >= 35) {
-      droughtDesc.innerText = 'Aridez moderada (Atenção para hidratação)';
-      droughtDesc.style.color = '#facc15';
-    } else {
-      droughtDesc.innerText = 'Equilíbrio psicrométrico favorável';
-      droughtDesc.style.color = '#34d399';
-    }
-
-    document.getElementById('cardAH').innerHTML = `${phys.ah.toFixed(2)}<span> g/m³</span>`;
-    document.getElementById('cardEa').innerHTML = `${phys.ea.toFixed(2)}<span> hPa</span>`;
-    document.getElementById('cardEs').innerHTML = `${phys.es.toFixed(2)}<span> hPa</span>`;
-    document.getElementById('cardKelvin').innerHTML = `${phys.kelvin.toFixed(1)}<span> K</span>`;
+    document.getElementById('cardDP').innerHTML = `${Number(latest.ponto_orvalho).toFixed(1)}<span> °C</span>`;
+    document.getElementById('cardVPD').innerHTML = `${Number(latest.vpd_kpa).toFixed(2)}<span> kPa</span>`;
+    document.getElementById('cardAH').innerHTML = `${Number(latest.umidade_absoluta).toFixed(2)}<span> g/m³</span>`;
+    document.getElementById('cardEa').innerHTML = `${Number(latest.pressao_vapor_real).toFixed(2)}<span> hPa</span>`;
 
     updateHumidityBioclimaticZone(humVal);
 
@@ -360,7 +443,9 @@ async function loadDashboardData() {
     const timestamps = ordered.map(d => d.coletado_em);
     const temps = ordered.map(d => Number(d.temperatura));
     const hums = ordered.map(d => Number(d.umidade));
-    const sensacoes = ordered.map(d => Number(d.indice_calor));
+    const iaqs = ordered.map(d => Number(d.iaq_indice || 0));
+    const ppms = ordered.map(d => Number(d.ppm_co2 || 400));
+    const mqs = ordered.map(d => Number(d.mq135_raw || 0));
 
     const minT = Math.min(...temps).toFixed(1);
     const maxT = Math.max(...temps).toFixed(1);
@@ -369,83 +454,85 @@ async function loadDashboardData() {
     document.getElementById('tempMinMax').innerText = `Min: ${minT}°C | Max: ${maxT}°C`;
     document.getElementById('humMinMax').innerText = `Min: ${minH}% | Max: ${maxH}%`;
 
-    // 1. Gráfico de Linhas Temporais
+    // 1. Gráfico Temporal Trivariado (Temp, Umid e IAQ)
     const traceTemp = {
       x: timestamps, y: temps, name: 'Temperatura (°C)',
       type: 'scatter', mode: 'lines',
-      line: { color: '#38bdf8', width: 2.5, shape: 'spline' },
+      line: { color: '#38bdf8', width: 2.2 },
       yaxis: 'y1'
     };
-
     const traceHum = {
       x: timestamps, y: hums, name: 'Umidade (%)',
       type: 'scatter', mode: 'lines',
-      line: { color: '#34d399', width: 2.5, shape: 'spline' },
+      line: { color: '#34d399', width: 2.2 },
       yaxis: 'y2'
     };
+    const traceIAQ = {
+      x: timestamps, y: iaqs, name: 'Índice IAQ',
+      type: 'scatter', mode: 'lines',
+      line: { color: '#fb923c', width: 2.2, dash: 'dot' },
+      yaxis: 'y3'
+    };
 
-    const layoutLine = WeatherChartsTheme.getLayout('Evolução Temporal Microclimática');
+    const layoutLine = WeatherChartsTheme.getLayout('Série Temporal Microclimática & Qualidade do Ar');
     layoutLine.yaxis.title = 'Temp (°C)';
     layoutLine.yaxis.titlefont = { color: '#38bdf8' };
-    layoutLine.yaxis.tickfont = { color: '#38bdf8' };
     layoutLine.yaxis2 = {
-      title: 'Umidade (%)',
+      title: 'Umid (%)',
       titlefont: { color: '#34d399' },
       tickfont: { color: '#34d399' },
       overlaying: 'y',
       side: 'right',
       gridcolor: 'rgba(255, 255, 255, 0.04)'
     };
-    Plotly.newPlot('chartTimeSeries', [traceTemp, traceHum], layoutLine, { responsive: true, displayModeBar: false });
+    Plotly.newPlot('chartTimeSeries', [traceTemp, traceHum, traceIAQ], layoutLine, { responsive: true, displayModeBar: false });
 
-    // 2. Gráfico de Isolinhas Termo-Higrométricas
-    const traceContour = {
-      x: temps, y: hums, type: 'histogram2dcontour',
-      colorscale: [
-        [0, '#061324'],
-        [0.5, '#0284c7'],
-        [1, '#38bdf8']
-      ],
-      contours: { coloring: 'heatmap' }
+    // 2. Dispersão Multivariada: Gases vs Umidade vs Temperatura
+    const traceScatter = {
+      x: hums,
+      y: ppms,
+      mode: 'markers',
+      type: 'scatter',
+      text: timestamps,
+      marker: {
+        size: 8,
+        color: temps,
+        colorscale: 'Portland',
+        colorbar: { title: 'Temp (°C)', len: 0.8 },
+        showscale: true
+      }
     };
-    const layoutContour = WeatherChartsTheme.getLayout('Densidade Termo-Higrométrica (Kernel)');
-    layoutContour.xaxis.title = 'Temp (°C)';
-    layoutContour.yaxis.title = 'Umid (%)';
-    Plotly.newPlot('chartHeatmap', [traceContour], layoutContour, { responsive: true, displayModeBar: false });
+    const layoutScatter = WeatherChartsTheme.getLayout('Dispersão: CO₂ Equivalente vs Umidade');
+    layoutScatter.xaxis.title = 'Umidade Relativa (%)';
+    layoutScatter.yaxis.title = 'CO₂ Equiv. (PPM)';
+    Plotly.newPlot('chartGasScatter', [traceScatter], layoutScatter, { responsive: true, displayModeBar: false });
 
-    // 3. Gráfico de Boxplots com Espaçamento Limpo
-    const traceBoxTemp = {
-      y: temps, name: 'Temperatura (°C)',
-      type: 'box', boxpoints: 'outliers',
-      marker: { color: '#38bdf8' }, line: { width: 1.8 }
+    // 3. Boxplots Comparativos de Dispersão
+    const traceBoxIAQ = {
+      y: iaqs, name: 'Índice IAQ',
+      type: 'box', marker: { color: '#10b981' }
     };
     const traceBoxHI = {
-      y: sensacoes, name: 'Sensação Térmica (°C)',
-      type: 'box', boxpoints: 'outliers',
-      marker: { color: '#fb923c' }, line: { width: 1.8 }
+      y: ordered.map(d => Number(d.indice_calor)), name: 'Sensação (°C)',
+      type: 'box', marker: { color: '#fb923c' }
     };
-    const layoutBox = WeatherChartsTheme.getLayout('Dispersão Quartílica (Boxplot de Amostras)');
-    layoutBox.yaxis.title = 'Escala Térmica (°C)';
-    Plotly.newPlot('chartBoxplots', [traceBoxTemp, traceBoxHI], layoutBox, { responsive: true, displayModeBar: false });
+    const layoutBox = WeatherChartsTheme.getLayout('Dispersão Quartílica (IAQ & Conforto)');
+    Plotly.newPlot('chartBoxplots', [traceBoxIAQ, traceBoxHI], layoutBox, { responsive: true, displayModeBar: false });
 
-    // 4. Gráfico de Barras com Margens Isoladas
+    // 4. Barras de Tendência Recente de Gases
     const recentSlices = ordered.slice(-15);
     const barLabels = recentSlices.map((_, i) => `#${i + 1}`);
-    const rainBars = recentSlices.map(d => calcPsychrometrics(Number(d.temperatura), Number(d.umidade)).rainProb);
-    const droughtBars = recentSlices.map(d => calcPsychrometrics(Number(d.temperatura), Number(d.umidade)).drought);
-
-    const traceRainBar = {
-      x: barLabels, y: rainBars, name: 'Chuva Convectiva (%)',
-      type: 'bar', marker: { color: '#60a5fa' }
+    const traceRawBar = {
+      x: barLabels, y: recentSlices.map(d => Number(d.mq135_raw || 0)),
+      name: 'MQ-135 RAW', type: 'bar', marker: { color: '#38bdf8' }
     };
-    const traceDroughtBar = {
-      x: barLabels, y: droughtBars, name: 'Índice de Secura (%)',
-      type: 'bar', marker: { color: '#eab308' }
+    const tracePPMBar = {
+      x: barLabels, y: recentSlices.map(d => Number(d.ppm_co2 || 400)),
+      name: 'PPM CO₂', type: 'bar', marker: { color: '#eab308' }
     };
-    const layoutBar = WeatherChartsTheme.getLayout('Monitor de Tendência: Precipitação vs Secura');
+    const layoutBar = WeatherChartsTheme.getLayout('Tendência de Carga de Gases Recente');
     layoutBar.barmode = 'group';
-    layoutBar.yaxis.title = 'Probabilidade (%)';
-    Plotly.newPlot('chartBarWeather', [traceRainBar, traceDroughtBar], layoutBar, { responsive: true, displayModeBar: false });
+    Plotly.newPlot('chartBarGasTrends', [traceRawBar, tracePPMBar], layoutBar, { responsive: true, displayModeBar: false });
 
   } catch(err) {
     console.error('Falha na telemetria:', err);
@@ -456,16 +543,20 @@ function updateHumidityBioclimaticZone(hum) {
   const badge = document.getElementById('humidityStatusBadge');
   ['zoneEmergencia', 'zoneAlerta', 'zoneAtencao', 'zoneIdeal', 'zoneExcesso'].forEach(id => {
     const el = document.getElementById(id);
-    el.style.boxShadow = 'none';
-    el.style.borderColor = 'var(--border-subtle)';
-    el.style.transform = 'none';
+    if (el) {
+      el.style.boxShadow = 'none';
+      el.style.borderColor = 'var(--border-subtle)';
+      el.style.transform = 'none';
+    }
   });
 
   const highlight = (id, color) => {
     const el = document.getElementById(id);
-    el.style.borderColor = color;
-    el.style.boxShadow = `0 0 16px ${color}33`;
-    el.style.transform = 'translateY(-2px)';
+    if (el) {
+      el.style.borderColor = color;
+      el.style.boxShadow = `0 0 16px ${color}33`;
+      el.style.transform = 'translateY(-2px)';
+    }
   };
 
   if (hum < 12) {
@@ -526,7 +617,10 @@ async function loadDescriptiveStats() {
       'indice_calor': 'Sensação Térmica (°C)',
       'ponto_orvalho': 'Ponto de Orvalho (°C)',
       'umidade_absoluta': 'Umidade Absoluta (g/m³)',
-      'pressao_vapor_real': 'Pressão Vapor Real (hPa)'
+      'pressao_vapor_real': 'Pressão Vapor Real (hPa)',
+      'mq135_raw': 'MQ-135 Bruto (RAW)',
+      'ppm_co2': 'CO₂ Equivalente (PPM)',
+      'iaq_indice': 'Índice de Qualidade do Ar (IAQ)'
     };
 
     tbody.innerHTML = Object.entries(data.stats).map(([k, s]) => `

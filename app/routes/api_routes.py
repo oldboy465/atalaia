@@ -10,7 +10,7 @@ from app.models.data_model import DataModel
 api_bp = Blueprint('api', __name__)
 
 # -------------------------------------------------------------
-# TABELA CRÍTICA t-STUDENT (AUTOCONTIDA)
+# TABELA CRÍTICA t-STUDENT (AUTOCONTIDA PARA INTERVALOS DE CONFIANÇA)
 # -------------------------------------------------------------
 def get_t_critical(df_degrees: int, confidence: float = 0.95) -> float:
     if df_degrees <= 0:
@@ -54,19 +54,25 @@ def get_t_critical(df_degrees: int, confidence: float = 0.95) -> float:
 @api_bp.route('/esp/status', methods=['GET'])
 def esp_status():
     status = ESPService.ping()
+    if status.get('online'):
+        # Enriquecimento com IAQ em tempo real caso venha mq135_raw
+        t = float(status.get('temperature', 0.0))
+        h = float(status.get('humidity', 0.0))
+        mq = int(status.get('mq135_raw', 0))
+        iaq_info = AtmosphericPhysics.calculate_iaq(mq, t, h)
+        status['iaq_indice'] = iaq_info['iaq']
+        status['ppm_co2'] = iaq_info['ppm_co2']
+        status['iaq_classificacao'] = iaq_info['classificacao']
+        status['iaq_cor'] = iaq_info['cor']
     return jsonify(status)
 
 @api_bp.route('/esp/wakeup', methods=['POST'])
 def esp_wakeup():
-    """
-    Tenta restabelecer handshake de rede com o nó ou enviar pulso de ativação.
-    """
-    status = ESPService.ping()
-    if status.get('online'):
-        return jsonify({'message': 'Nó ESP32 já se encontra ativo e respondendo na rede local.', 'online': True}), 200
-
+    success = ESPService.wakeup()
+    if success:
+        return jsonify({'message': 'Sinal de despertar emitido com sucesso ao nó sensorial.', 'online': True}), 200
     return jsonify({
-        'message': 'Tentativa de despertar enviada. Se o nó estiver desconectado, pressione o botão RST físico ou conecte ao AP "atalaia1".',
+        'message': 'Tentativa de despertar enviada. Se o nó estiver desligado, pressione RST físico ou conecte ao AP "atalaia1".',
         'online': False
     }), 200
 
@@ -103,7 +109,7 @@ def esp_extract():
 def esp_shutdown():
     success = ESPService.shutdown()
     if success:
-        return jsonify({'message': 'Comando de Deep-Sleep enviado com sucesso.'}), 200
+        return jsonify({'message': 'Comando de suspensão/economia enviado com sucesso.'}), 200
     return jsonify({'error': 'Falha ao comunicar com o nó ESP32.'}), 502
 
 # -------------------------------------------------------------
@@ -120,11 +126,20 @@ def get_coletas():
     for c in coletas:
         t = float(c.get('temperatura', 0.0))
         h = float(c.get('umidade', 0.0))
+        mq = int(c.get('mq135_raw', 0))
         dp = float(c.get('ponto_orvalho', AtmosphericPhysics.dew_point(t, h)))
         vpd = AtmosphericPhysics.vpd_vapor_pressure_deficit(t, h)
+        hi = float(c.get('indice_calor', AtmosphericPhysics.heat_index(t, h)))
+        
+        iaq_val = float(c.get('iaq_indice', AtmosphericPhysics.calculate_iaq(mq, t, h)['iaq']))
+        
         c['vpd_kpa'] = vpd
         c['probabilidade_chuva'] = AtmosphericPhysics.rain_probability_estimate(t, h, dp)
         c['indice_secura'] = AtmosphericPhysics.aridity_drought_index(t, h, vpd)
+        c['aqsi_estresse'] = AtmosphericPhysics.calculate_aqsi(t, h, hi, vpd, iaq_val)
+        mold = AtmosphericPhysics.mold_risk_indicator(t, h, mq)
+        c['risco_bolor'] = mold['risco_percentual']
+        c['status_bolor'] = mold['status']
 
     return jsonify(coletas)
 
@@ -149,11 +164,19 @@ def get_coletas_paginadas():
     for r in result.get('records', []):
         t = float(r.get('temperatura', 0.0))
         h = float(r.get('umidade', 0.0))
+        mq = int(r.get('mq135_raw', 0))
         dp = float(r.get('ponto_orvalho', AtmosphericPhysics.dew_point(t, h)))
         vpd = AtmosphericPhysics.vpd_vapor_pressure_deficit(t, h)
+        hi = float(r.get('indice_calor', AtmosphericPhysics.heat_index(t, h)))
+        iaq_val = float(r.get('iaq_indice', AtmosphericPhysics.calculate_iaq(mq, t, h)['iaq']))
+
         r['vpd_kpa'] = vpd
         r['probabilidade_chuva'] = AtmosphericPhysics.rain_probability_estimate(t, h, dp)
         r['indice_secura'] = AtmosphericPhysics.aridity_drought_index(t, h, vpd)
+        r['aqsi_estresse'] = AtmosphericPhysics.calculate_aqsi(t, h, hi, vpd, iaq_val)
+        mold = AtmosphericPhysics.mold_risk_indicator(t, h, mq)
+        r['risco_bolor'] = mold['risco_percentual']
+        r['status_bolor'] = mold['status']
 
     return jsonify(result)
 
@@ -164,7 +187,17 @@ def update_coleta(coleta_id: int):
     if not novo_timestamp:
         return jsonify({'error': 'Campo coletado_em é obrigatório.'}), 400
 
-    DataModel.update_coleta_datestamp(coleta_id, str(novo_timestamp))
+    temp = float(data['temperatura']) if 'temperatura' in data and data['temperatura'] is not None else None
+    hum = float(data['umidade']) if 'umidade' in data and data['umidade'] is not None else None
+    mq = int(data['mq135_raw']) if 'mq135_raw' in data and data['mq135_raw'] is not None else None
+
+    DataModel.update_coleta_inline(
+        coleta_id=coleta_id,
+        novo_timestamp=str(novo_timestamp),
+        temp=temp,
+        hum=hum,
+        mq=mq
+    )
     return jsonify({'message': 'Registro atualizado com sucesso.'}), 200
 
 @api_bp.route('/coletas/<int:coleta_id>', methods=['DELETE'])
@@ -185,7 +218,6 @@ def delete_coletas_batch():
 
 @api_bp.route('/locais', methods=['GET'])
 def get_locais():
-    # Retorna dinamicamente apenas os locais que possuem dados cadastrados
     only_with_data = request.args.get('with_data', default='true').lower() in ('true', '1')
     return jsonify(DataModel.list_locais(only_with_data=only_with_data))
 
@@ -212,7 +244,7 @@ def update_local(local_id: int):
     return jsonify({'message': 'Local atualizado com sucesso.'}), 200
 
 # -------------------------------------------------------------
-# ESTATÍSTICA DESCRITIVA ROBUSTA
+# ESTATÍSTICA DESCRITIVA ROBUSTA (INCLUINDO QUALIDADE DO AR)
 # -------------------------------------------------------------
 @api_bp.route('/analytics/descriptive', methods=['GET'])
 def get_descriptive_stats():
@@ -225,7 +257,10 @@ def get_descriptive_stats():
         return jsonify({'count': 0, 'stats': {}}), 200
 
     df = pd.DataFrame(rows)
-    variables = ['temperatura', 'umidade', 'indice_calor', 'ponto_orvalho', 'umidade_absoluta', 'pressao_vapor_real']
+    variables = [
+        'temperatura', 'umidade', 'indice_calor', 'ponto_orvalho',
+        'umidade_absoluta', 'pressao_vapor_real', 'mq135_raw', 'ppm_co2', 'iaq_indice'
+    ]
     result: Dict[str, Any] = {}
 
     for var in variables:
@@ -282,7 +317,7 @@ def get_descriptive_stats():
     return jsonify({'count': len(df), 'stats': result}), 200
 
 # -------------------------------------------------------------
-# ROTAS ANALÍTICAS E MACHINE LEARNING
+# ROTAS ANALÍTICAS E MACHINE LEARNING SUPERVISIONADO E AR
 # -------------------------------------------------------------
 @api_bp.route('/analytics/train', methods=['POST'])
 def train_model():
@@ -295,9 +330,9 @@ def train_model():
     model_type = str(payload.get('model_type', 'ols'))
     hyperparams = cast(Dict[str, Any], payload.get('hyperparams', {}))
 
-    raw_data = DataModel.list_coletas(local_id=local_id, limit=2000)
+    raw_data = DataModel.list_coletas(local_id=local_id, limit=3000)
     if len(raw_data) < 10:
-        return jsonify({'error': 'Volume insuficiente de dados no local selecionado.'}), 400
+        return jsonify({'error': 'Volume insuficiente de dados no local selecionado para ajuste de modelo.'}), 400
 
     df = pd.DataFrame(raw_data)
     try:
@@ -322,9 +357,9 @@ def forecast():
     lags = int(payload.get('lags', 5))
     steps = int(payload.get('steps', 20))
 
-    raw_data = DataModel.list_coletas(local_id=local_id, limit=1000)
+    raw_data = DataModel.list_coletas(local_id=local_id, limit=1500)
     if not raw_data:
-        return jsonify({'error': 'Nenhum dado encontrado para previsão.'}), 400
+        return jsonify({'error': 'Nenhum dado encontrado para projeção temporal.'}), 400
 
     df = pd.DataFrame(raw_data).sort_values(by='coletado_em')
     try:

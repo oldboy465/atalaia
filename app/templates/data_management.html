@@ -10,10 +10,9 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--weather-sky)" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
         Terminal de Gestão e Auditoria de Registros
       </h2>
-      <p style="font-size: 0.8rem; color: var(--text-muted);">Auditoria física, retificação cronológica, classificação bioclimática e exclusão em massa</p>
+      <p style="font-size: 0.8rem; color: var(--text-muted);">Auditoria física, retificação inline de gases (MQ-135/IAQ), classificação ambiental e exclusão em massa</p>
     </div>
     
-    <!-- Botão de Ação em Massa Flutuante -->
     <div id="batchActionContainer" class="hidden">
       <button class="btn btn-danger" onclick="deleteSelectedRows()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -35,14 +34,14 @@
       <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Neste Intervalo</div>
     </div>
     <div class="metric-box">
-      <div class="metric-box-title">Umidade Média</div>
-      <div class="metric-box-val" id="statAvgHum">--<span> %</span></div>
-      <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Neste Intervalo</div>
+      <div class="metric-box-title">MQ-135 Médio</div>
+      <div class="metric-box-val" id="statAvgMQ">--<span> RAW</span></div>
+      <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">ADC do Sensor</div>
     </div>
     <div class="metric-box">
-      <div class="metric-box-title">Amplitude Térmica</div>
-      <div class="metric-box-val" id="statRangeTemp">--<span> °C</span></div>
-      <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Variação Max - Min</div>
+      <div class="metric-box-title">Índice IAQ Médio</div>
+      <div class="metric-box-val" id="statAvgIAQ">--<span> IAQ</span></div>
+      <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">Qualidade do Ar</div>
     </div>
   </div>
 
@@ -87,7 +86,7 @@
     </button>
   </div>
 
-  <!-- Tabela com Checkbox em Massa e Diagnóstico Bioclimático -->
+  <!-- Tabela com Checkbox em Massa, MQ-135 e Edição Inline -->
   <div style="overflow-x: auto; background: rgba(6, 14, 26, 0.55); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
     <table id="coletasTable" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem;">
       <thead>
@@ -96,30 +95,29 @@
             <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" style="cursor: pointer;">
           </th>
           <th style="padding: 12px 14px;">ID</th>
-          <th style="padding: 12px 14px;">Estação / Ponto</th>
-          <th style="padding: 12px 14px;">Timestamp (Edição Inline)</th>
+          <th style="padding: 12px 14px;">Estação</th>
+          <th style="padding: 12px 14px;">Timestamp</th>
           <th style="padding: 12px 14px;">Temp (°C)</th>
           <th style="padding: 12px 14px;">Umid (%)</th>
+          <th style="padding: 12px 14px;">MQ-135 (RAW)</th>
+          <th style="padding: 12px 14px;">CO₂ (ppm)</th>
+          <th style="padding: 12px 14px;">Índice IAQ</th>
           <th style="padding: 12px 14px;">Chuva (%)</th>
-          <th style="padding: 12px 14px;">Secura (%)</th>
-          <th style="padding: 12px 14px;">Ponto Orvalho</th>
           <th style="padding: 12px 14px; text-align: center;">Ações</th>
         </tr>
       </thead>
       <tbody id="tableBody">
-        <tr><td colspan="10" style="padding: 24px; text-align: center; color: var(--text-muted);">Sincronizando amostras do banco...</td></tr>
+        <tr><td colspan="11" style="padding: 24px; text-align: center; color: var(--text-muted);">Sincronizando amostras do banco...</td></tr>
       </tbody>
     </table>
   </div>
 
-  <!-- Controles da Paginação Touch e Desktop -->
+  <!-- Controles da Paginação -->
   <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; flex-wrap: wrap; gap: 10px;">
     <div style="font-size: 0.8rem; color: var(--text-muted);" id="paginationInfo">
       Mostrando página 1 de 1
     </div>
-    <div style="display: flex; gap: 6px;" id="paginationControls">
-      <!-- Injetado dinamicamente -->
-    </div>
+    <div style="display: flex; gap: 6px;" id="paginationControls"></div>
   </div>
 </div>
 {% endblock %}
@@ -161,14 +159,20 @@ function renderTable(records) {
   selectAll.checked = false;
 
   if (!records || records.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" style="padding: 24px; text-align: center; color: var(--text-muted);">Nenhum dado encontrado para o filtro estipulado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="padding: 24px; text-align: center; color: var(--text-muted);">Nenhum dado encontrado para o filtro estipulado.</td></tr>';
     return;
   }
 
   tbody.innerHTML = records.map(r => {
     const isChecked = selectedIds.has(r.id) ? 'checked' : '';
     const rain = Number(r.probabilidade_chuva || 0).toFixed(1);
-    const drought = Number(r.indice_secura || 0).toFixed(1);
+    const ppm = Number(r.ppm_co2 || 400).toFixed(1);
+    const iaq = Number(r.iaq_indice || 0).toFixed(1);
+
+    let iaqColor = '#34d399';
+    if (iaq > 200) iaqColor = '#f87171';
+    else if (iaq > 150) iaqColor = '#fb923c';
+    else if (iaq > 100) iaqColor = '#facc15';
 
     return `
       <tr style="border-bottom: 1px solid var(--border-subtle); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
@@ -178,18 +182,25 @@ function renderTable(records) {
         <td style="padding: 10px 14px; font-weight: 600; color: #38bdf8;">#${r.id}</td>
         <td style="padding: 10px 14px; font-weight: 500; color: #ffffff;">${r.local_nome}</td>
         <td style="padding: 10px 14px;">
-          <input type="text" id="dt-${r.id}" value="${r.coletado_em}" class="form-control" style="width: 175px; padding: 4px 8px; font-size: 0.78rem; font-family: monospace;">
+          <input type="text" id="dt-${r.id}" value="${r.coletado_em}" class="form-control" style="width: 165px; padding: 4px 8px; font-size: 0.78rem; font-family: monospace;">
         </td>
-        <td style="padding: 10px 14px; font-weight: 600; color: #38bdf8;">${Number(r.temperatura).toFixed(1)}</td>
-        <td style="padding: 10px 14px; font-weight: 600; color: #34d399;">${Number(r.umidade).toFixed(1)}</td>
+        <td style="padding: 10px 14px;">
+          <input type="number" step="0.1" id="temp-${r.id}" value="${Number(r.temperatura).toFixed(1)}" class="form-control" style="width: 75px; padding: 4px 6px; font-size: 0.78rem; font-weight: 600; color: #38bdf8;">
+        </td>
+        <td style="padding: 10px 14px;">
+          <input type="number" step="0.1" id="hum-${r.id}" value="${Number(r.umidade).toFixed(1)}" class="form-control" style="width: 75px; padding: 4px 6px; font-size: 0.78rem; font-weight: 600; color: #34d399;">
+        </td>
+        <td style="padding: 10px 14px;">
+          <input type="number" step="1" id="mq-${r.id}" value="${r.mq135_raw || 0}" class="form-control" style="width: 80px; padding: 4px 6px; font-size: 0.78rem; font-weight: 600; color: #fb923c;">
+        </td>
+        <td style="padding: 10px 14px; color: #eab308; font-weight: 600;">${ppm}</td>
+        <td style="padding: 10px 14px; color: ${iaqColor}; font-weight: 700;">${iaq}</td>
         <td style="padding: 10px 14px; color: #60a5fa; font-weight: 600;">${rain}%</td>
-        <td style="padding: 10px 14px; color: #eab308; font-weight: 600;">${drought}%</td>
-        <td style="padding: 10px 14px; color: var(--text-muted);">${Number(r.ponto_orvalho).toFixed(1)} °C</td>
-        <td style="padding: 10px 14px; text-align: center; display: flex; gap: 8px; justify-content: center;">
-          <button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.75rem;" onclick="saveTimestamp(${r.id})" title="Salvar alteração temporal">
+        <td style="padding: 10px 14px; text-align: center; display: flex; gap: 6px; justify-content: center;">
+          <button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.75rem;" onclick="saveRowInline(${r.id})" title="Recalcular e Salvar">
             Salvar
           </button>
-          <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="deleteRow(${r.id})" title="Excluir amostra">
+          <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="deleteRow(${r.id})" title="Excluir">
             Excluir
           </button>
         </td>
@@ -221,9 +232,8 @@ function renderPagination(data) {
 function renderStats(stats, total) {
   document.getElementById('statTotal').innerText = total;
   document.getElementById('statAvgTemp').innerHTML = `${stats.avg_temp}<span> °C</span>`;
-  document.getElementById('statAvgHum').innerHTML = `${stats.avg_hum}<span> %</span>`;
-  const range = (stats.max_temp - stats.min_temp).toFixed(1);
-  document.getElementById('statRangeTemp').innerHTML = `${range}<span> °C</span>`;
+  document.getElementById('statAvgMQ').innerHTML = `${stats.avg_mq || 0}<span> RAW</span>`;
+  document.getElementById('statAvgIAQ').innerHTML = `${stats.avg_iaq || 0}<span> IAQ</span>`;
 }
 
 function toggleSelectAll(masterCb) {
@@ -231,21 +241,15 @@ function toggleSelectAll(masterCb) {
   checkboxes.forEach(cb => {
     cb.checked = masterCb.checked;
     const id = parseInt(cb.value);
-    if (masterCb.checked) {
-      selectedIds.add(id);
-    } else {
-      selectedIds.delete(id);
-    }
+    if (masterCb.checked) selectedIds.add(id);
+    else selectedIds.delete(id);
   });
   updateBatchUI();
 }
 
 function toggleRowSelection(cb, id) {
-  if (cb.checked) {
-    selectedIds.add(id);
-  } else {
-    selectedIds.delete(id);
-  }
+  if (cb.checked) selectedIds.add(id);
+  else selectedIds.delete(id);
   updateBatchUI();
 }
 
@@ -297,9 +301,7 @@ function changePerPage() {
 }
 
 function handleSearchKey(event) {
-  if (event.key === 'Enter') {
-    applyFilters();
-  }
+  if (event.key === 'Enter') applyFilters();
 }
 
 function resetFilters() {
@@ -313,16 +315,26 @@ function resetFilters() {
   loadTableData(1);
 }
 
-async function saveTimestamp(id) {
-  const newVal = document.getElementById(`dt-${id}`).value;
+async function saveRowInline(id) {
+  const dtVal = document.getElementById(`dt-${id}`).value;
+  const tempVal = document.getElementById(`temp-${id}`).value;
+  const humVal = document.getElementById(`hum-${id}`).value;
+  const mqVal = document.getElementById(`mq-${id}`).value;
+
   try {
     const res = await fetch(`/api/coletas/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ coletado_em: newVal })
+      body: JSON.stringify({
+        coletado_em: dtVal,
+        temperatura: parseFloat(tempVal),
+        umidade: parseFloat(humVal),
+        mq135_raw: parseInt(mqVal)
+      })
     });
     if (res.ok) {
-      alert('Registro retificado com sucesso.');
+      alert('Registro recalculado e salvo com sucesso.');
+      loadTableData(currentPage);
     } else {
       alert('Falha ao atualizar registro.');
     }

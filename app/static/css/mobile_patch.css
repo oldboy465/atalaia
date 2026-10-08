@@ -1,15 +1,15 @@
 /* ==========================================================================
    MOBILE & VIEWPORT OPTIMIZATIONS (TOUCH-FRIENDLY SYSTEM)
-   Polimento fino de toques, safe-areas de celulares e responsividade
+   Polimento fino de toques, safe-areas de telemóveis e responsividade
    ========================================================================== */
 
-/* Prevenção de toques acidentais e melhoria de latência em telas touch */
+/* Prevenção de toques acidentais e melhoria de latência em ecrãs touch */
 html {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Suporte às bordas infinitas de iPhones e Androids modernos (Notch/Safe Area) */
+/* Suporte às margens de segurança de smartphones modernos */
 body {
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -79,7 +79,7 @@ body {
   margin-top: 2px;
 }
 
-/* Ajuste fino na grade de Analytics para telas verticais e tablets */
+/* Ajuste na grelha de Analytics para ecrãs verticais e tablets */
 @media (max-width: 1024px) {
   .analytics-layout-grid {
     grid-template-columns: 1fr !important;
@@ -92,7 +92,7 @@ body {
   }
   
   .comet-dial {
-    --cd-size: 175px !important;
+    --cd-size: 170px !important;
   }
 
   .cd-val {
