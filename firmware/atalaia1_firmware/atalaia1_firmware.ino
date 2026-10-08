@@ -109,14 +109,14 @@ void updateGasLed() {
 
   unsigned long now = millis();
 
-  if (currentMQ135 > 3000) {
+  if (currentMQ135 > 1800) {
     // Alerta Crítico: Piscar rápido on/off (120ms)
     if (now - lastGasBlinkStep >= 120) {
       lastGasBlinkStep = now;
       gasFastBlinkState = !gasFastBlinkState;
       ledcWrite(LED_GAS_PIN, gasFastBlinkState ? 255 : 0);
     }
-  } else if (currentMQ135 > 2000) {
+  } else if (currentMQ135 >= 800) {
     // Alerta Moderado: Efeito respirar suave
     if (now - lastGasBreatheStep >= 20) {
       lastGasBreatheStep = now;
@@ -131,7 +131,7 @@ void updateGasLed() {
       ledcWrite(LED_GAS_PIN, gasBreatheBrightness);
     }
   } else {
-    // Abaixo de 2000: Apagado
+    // Abaixo de 800: Apagado
     ledcWrite(LED_GAS_PIN, 0);
     gasBreatheBrightness = 0;
   }
