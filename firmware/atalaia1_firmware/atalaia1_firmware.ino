@@ -8,8 +8,10 @@
 // DEFINIÇÃO DE HARDWARE E PINOS
 // -------------------------------------------------------------
 #define DHTPIN 4
+#define MQ135_PIN 34
 #define LED_PULSE_PIN 18
 #define LED_WIFI_PIN  19
+#define LED_GAS_PIN   21
 
 #define PWM_FREQ 5000
 #define PWM_RES  8
@@ -29,9 +31,9 @@ IPAddress gateway(192, 168, 4, 1);
 IPAddress subnet(255, 255, 255, 0);
 
 // -------------------------------------------------------------
-// PERSISTÊNCIA EM FLASH (LittleFS)
+// PERSISTÊNCIA EM FLASH (LittleFS) - BUFFER DE 12 HORAS (8640 AMOSTRAS)
 // -------------------------------------------------------------
-#define BUFFER_CAPACITY 7200
+#define BUFFER_CAPACITY 8640
 #define STORAGE_FILE "/atalaia_buffer.bin"
 #define BOOT_FILE    "/boot_count.txt"
 
@@ -40,6 +42,7 @@ struct SensorData {
   float humidity;
   uint32_t uptime_sec;
   uint32_t session_id;
+  int mq135_raw;
 };
 
 size_t bufferCount = 0;
@@ -49,13 +52,14 @@ WebServer server(80);
 
 float currentTemp = 0.0f;
 float currentHumidity = 0.0f;
+int currentMQ135 = 0;
 unsigned long lastSensorRead = 0;
 const unsigned long READ_INTERVAL = 5000;
 
 // Estado de Operação: Ativo (true) ou Suspenso/Dormindo (false)
 bool isNodeAwake = true;
 
-// LED Pulse sem bloqueio FreeRTOS
+// LED Pulse sem bloqueio FreeRTOS (D18)
 bool isPulsing = false;
 int pulseBrightness = LED_STANDBY_BRIGHTNESS;
 int pulseDirection = 15;
@@ -84,6 +88,52 @@ void updatePulse() {
       isPulsing = false;
     }
     ledcWrite(LED_PULSE_PIN, pulseBrightness);
+  }
+}
+
+// -------------------------------------------------------------
+// CONTROLE DO LED DE ALERTA DE GÁS (D21)
+// -------------------------------------------------------------
+int gasBreatheBrightness = 0;
+int gasBreatheDirection = 5;
+unsigned long lastGasBreatheStep = 0;
+
+bool gasFastBlinkState = false;
+unsigned long lastGasBlinkStep = 0;
+
+void updateGasLed() {
+  if (!isNodeAwake) {
+    ledcWrite(LED_GAS_PIN, 0);
+    return;
+  }
+
+  unsigned long now = millis();
+
+  if (currentMQ135 > 3000) {
+    // Alerta Crítico: Piscar rápido on/off (120ms)
+    if (now - lastGasBlinkStep >= 120) {
+      lastGasBlinkStep = now;
+      gasFastBlinkState = !gasFastBlinkState;
+      ledcWrite(LED_GAS_PIN, gasFastBlinkState ? 255 : 0);
+    }
+  } else if (currentMQ135 > 2000) {
+    // Alerta Moderado: Efeito respirar suave
+    if (now - lastGasBreatheStep >= 20) {
+      lastGasBreatheStep = now;
+      gasBreatheBrightness += gasBreatheDirection;
+      if (gasBreatheBrightness >= 255) {
+        gasBreatheBrightness = 255;
+        gasBreatheDirection = -5;
+      } else if (gasBreatheBrightness <= 0) {
+        gasBreatheBrightness = 0;
+        gasBreatheDirection = 5;
+      }
+      ledcWrite(LED_GAS_PIN, gasBreatheBrightness);
+    }
+  } else {
+    // Abaixo de 2000: Apagado
+    ledcWrite(LED_GAS_PIN, 0);
+    gasBreatheBrightness = 0;
   }
 }
 
@@ -217,7 +267,20 @@ bool sampleDHTSensor(float &outTemp, float &outHum) {
 }
 
 // -------------------------------------------------------------
-// TEMPLATE HTML EMBARCADO (LEVE COM BOTÃO RUDIMENTAR DE LIGAR/DESLIGAR)
+// LEITURA DO MQ135 COM AMOSTRAGEM SUAVIZADA
+// -------------------------------------------------------------
+int sampleMQ135() {
+  long sum = 0;
+  const int samples = 10;
+  for (int i = 0; i < samples; i++) {
+    sum += analogRead(MQ135_PIN);
+    delayMicroseconds(100);
+  }
+  return (int)(sum / samples);
+}
+
+// -------------------------------------------------------------
+// TEMPLATE HTML EMBARCADO
 // -------------------------------------------------------------
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -240,6 +303,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     .val{font-size:1.8rem;font-weight:700}
     .temp{color:#38bdf8}
     .hum{color:#34d399}
+    .mq{color:#fb923c}
     .unit{font-size:0.8rem;color:#94a3b8}
     .btn-toggle{width:100%;padding:10px;margin-bottom:16px;border-radius:8px;border:none;font-size:0.85rem;font-weight:700;cursor:pointer;color:#ffffff}
     .btn-wake{background:#059669}
@@ -270,10 +334,14 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <div class="val hum" id="valHum">--<span class="unit"> %</span></div>
       </div>
     </div>
+    <div class="metric" style="margin-bottom: 16px;">
+      <h3>Qualidade do Ar (MQ135)</h3>
+      <div class="val mq" id="valMQ135">--<span class="unit"> RAW</span></div>
+    </div>
     <div class="footer">
       <p id="sessionInfo">Sessão: #--</p>
       <p id="uptime">Tempo Ativo: 00h 00m 00s</p>
-      <p id="bufferStatus">Flash: 0 / 7200 Amostras</p>
+      <p id="bufferStatus">Flash: 0 / 8640 Amostras</p>
     </div>
   </div>
   <script>
@@ -286,13 +354,14 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         const data = await res.json();
         document.getElementById('valTemp').innerHTML = data.temperature.toFixed(1) + '<span class="unit"> °C</span>';
         document.getElementById('valHum').innerHTML = data.humidity.toFixed(1) + '<span class="unit"> %</span>';
+        document.getElementById('valMQ135').innerHTML = (data.mq135_raw !== undefined ? data.mq135_raw : '--') + '<span class="unit"> RAW</span>';
         document.getElementById('sessionInfo').innerText = `Sessão Atual: #${data.session_id}`;
         
         const hrs = Math.floor(data.uptime_seconds / 3600);
         const mins = Math.floor((data.uptime_seconds % 3600) / 60);
         const secs = data.uptime_seconds % 60;
         document.getElementById('uptime').innerText = `Uptime: ${hrs}h ${mins}m ${secs}s`;
-        document.getElementById('bufferStatus').innerText = `Flash: ${data.buffer_count} / 7200 Amostras`;
+        document.getElementById('bufferStatus').innerText = `Flash: ${data.buffer_count} / 8640 Amostras`;
         
         nodeAwakeState = data.node_awake;
         renderPowerUI(nodeAwakeState);
@@ -340,10 +409,15 @@ void setup() {
   ledcAttach(LED_PULSE_PIN, PWM_FREQ, PWM_RES);
   ledcWrite(LED_PULSE_PIN, LED_STANDBY_BRIGHTNESS);
 
+  ledcAttach(LED_GAS_PIN, PWM_FREQ, PWM_RES);
+  ledcWrite(LED_GAS_PIN, 0);
+
   pinMode(LED_WIFI_PIN, OUTPUT);
   digitalWrite(LED_WIFI_PIN, LOW);
 
   pinMode(DHTPIN, INPUT_PULLUP);
+  pinMode(MQ135_PIN, INPUT);
+  analogSetPinAttenuation(MQ135_PIN, ADC_11db);
 
   initStorage();
 
@@ -368,9 +442,10 @@ void setup() {
   // Telemetria em Tempo Real
   server.on("/api/current", HTTP_GET, []() {
     server.sendHeader("Access-Control-Allow-Origin", "*");
-    StaticJsonDocument<384> doc;
+    StaticJsonDocument<512> doc;
     doc["temperature"] = currentTemp;
     doc["humidity"] = currentHumidity;
+    doc["mq135_raw"] = currentMQ135;
     doc["uptime_seconds"] = (uint32_t)(esp_timer_get_time() / 1000000ULL);
     doc["connected_clients"] = WiFi.softAPgetStationNum();
     doc["buffer_count"] = bufferCount;
@@ -404,7 +479,8 @@ void setup() {
       jsonItem += "{\"t\":" + String(item.temperature, 2) +
                   ",\"h\":" + String(item.humidity, 2) +
                   ",\"u\":" + String(item.uptime_sec) +
-                  ",\"s\":" + String(item.session_id) + "}";
+                  ",\"s\":" + String(item.session_id) +
+                  ",\"mq\":" + String(item.mq135_raw) + "}";
       server.sendContent(jsonItem);
       i++;
     }
@@ -425,6 +501,7 @@ void setup() {
     server.sendHeader("Access-Control-Allow-Origin", "*");
     isNodeAwake = false;
     ledcWrite(LED_PULSE_PIN, 0);
+    ledcWrite(LED_GAS_PIN, 0);
     server.send(200, "application/json", "{\"status\":\"node_sleeping\",\"message\":\"No colocado em Standby de economia.\"}");
   });
 
@@ -450,6 +527,7 @@ void loop() {
   // Se o nó estiver acordado, executa os efeitos de pulso e leituras normais
   if (isNodeAwake) {
     updatePulse();
+    updateGasLed();
 
     // LED D19: Aceso quando o notebook/celular estiver conectado ao AP
     if (WiFi.softAPgetStationNum() > 0) {
@@ -469,17 +547,19 @@ void loop() {
       if (ok) {
         currentTemp = t;
         currentHumidity = h;
+        currentMQ135 = sampleMQ135();
 
         SensorData sample;
         sample.temperature = t;
         sample.humidity = h;
         sample.uptime_sec = (uint32_t)(esp_timer_get_time() / 1000000ULL);
         sample.session_id = currentBootSession;
+        sample.mq135_raw = currentMQ135;
 
         saveSampleToFlash(sample);
 
-        Serial.printf("[S#%u] Temp: %.1f C | Umid: %.1f %% | Flash: %u/7200\n",
-                      currentBootSession, t, h, (unsigned int)bufferCount);
+        Serial.printf("[S#%u] Temp: %.1f C | Umid: %.1f %% | MQ135: %d | Flash: %u/8640\n",
+                      currentBootSession, t, h, currentMQ135, (unsigned int)bufferCount);
 
         startPulse();
       }
@@ -488,6 +568,7 @@ void loop() {
     // Nó em Standby: LEDs desligados para poupar bateria
     digitalWrite(LED_WIFI_PIN, LOW);
     ledcWrite(LED_PULSE_PIN, 0);
+    ledcWrite(LED_GAS_PIN, 0);
     delay(5); // Alivia a CPU mantendo o servidor web e o rádio Wi-Fi responsivos para o despertar
   }
 }
