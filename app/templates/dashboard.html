@@ -411,7 +411,9 @@ async function loadDashboardData() {
     const data = await res.json();
     if (!data || data.length === 0) return;
 
-    const latest = data[0];
+    // Filtra para garantir que o dial mostre uma leitura válida, ignorando amostras de falha inicial (0/0)
+    let latest = data.find(d => Number(d.temperatura) > 0.01 && Number(d.umidade) > 0.01) || data[0];
+
     const tempVal = Number(latest.temperatura);
     const humVal = Number(latest.umidade);
     const hiVal = Number(latest.indice_calor);
@@ -426,7 +428,6 @@ async function loadDashboardData() {
 
     updateIAQZones(iaqVal, ppmVal, mqVal);
 
-    // Atualização dos cards preditivos enriquecidos
     document.getElementById('cardRainProb').innerHTML = `${Number(latest.probabilidade_chuva || 0).toFixed(1)}<span> %</span>`;
     document.getElementById('cardDroughtIndex').innerHTML = `${Number(latest.indice_secura || 0).toFixed(1)}<span> %</span>`;
     document.getElementById('cardMoldRisk').innerHTML = `${Number(latest.risco_bolor || 0).toFixed(1)}<span> %</span>`;
@@ -439,7 +440,10 @@ async function loadDashboardData() {
 
     updateHumidityBioclimaticZone(humVal);
 
-    const ordered = [...data].reverse();
+    // Considera apenas as amostras com dados reais para o cálculo dos gráficos e mínimos/máximos
+    const validData = data.filter(d => Number(d.temperatura) > 0.01);
+    const ordered = (validData.length > 0 ? [...validData] : [...data]).reverse();
+
     const timestamps = ordered.map(d => d.coletado_em);
     const temps = ordered.map(d => Number(d.temperatura));
     const hums = ordered.map(d => Number(d.umidade));
@@ -447,14 +451,16 @@ async function loadDashboardData() {
     const ppms = ordered.map(d => Number(d.ppm_co2 || 400));
     const mqs = ordered.map(d => Number(d.mq135_raw || 0));
 
-    const minT = Math.min(...temps).toFixed(1);
-    const maxT = Math.max(...temps).toFixed(1);
-    const minH = Math.min(...hums).toFixed(1);
-    const maxH = Math.max(...hums).toFixed(1);
-    document.getElementById('tempMinMax').innerText = `Min: ${minT}°C | Max: ${maxT}°C`;
-    document.getElementById('humMinMax').innerText = `Min: ${minH}% | Max: ${maxH}%`;
+    if (temps.length > 0) {
+      const minT = Math.min(...temps).toFixed(1);
+      const maxT = Math.max(...temps).toFixed(1);
+      const minH = Math.min(...hums).toFixed(1);
+      const maxH = Math.max(...hums).toFixed(1);
+      document.getElementById('tempMinMax').innerText = `Min: ${minT}°C | Max: ${maxT}°C`;
+      document.getElementById('humMinMax').innerText = `Min: ${minH}% | Max: ${maxH}%`;
+    }
 
-    // 1. Gráfico Temporal Trivariado (Temp, Umid e IAQ)
+    // 1. Gráfico Temporal Trivariado
     const traceTemp = {
       x: timestamps, y: temps, name: 'Temperatura (°C)',
       type: 'scatter', mode: 'lines',
@@ -487,7 +493,7 @@ async function loadDashboardData() {
     };
     Plotly.newPlot('chartTimeSeries', [traceTemp, traceHum, traceIAQ], layoutLine, { responsive: true, displayModeBar: false });
 
-    // 2. Dispersão Multivariada: Gases vs Umidade vs Temperatura
+    // 2. Dispersão: Gases vs Umidade vs Temperatura
     const traceScatter = {
       x: hums,
       y: ppms,
@@ -507,7 +513,7 @@ async function loadDashboardData() {
     layoutScatter.yaxis.title = 'CO₂ Equiv. (PPM)';
     Plotly.newPlot('chartGasScatter', [traceScatter], layoutScatter, { responsive: true, displayModeBar: false });
 
-    // 3. Boxplots Comparativos de Dispersão
+    // 3. Boxplots
     const traceBoxIAQ = {
       y: iaqs, name: 'Índice IAQ',
       type: 'box', marker: { color: '#10b981' }
@@ -519,7 +525,7 @@ async function loadDashboardData() {
     const layoutBox = WeatherChartsTheme.getLayout('Dispersão Quartílica (IAQ & Conforto)');
     Plotly.newPlot('chartBoxplots', [traceBoxIAQ, traceBoxHI], layoutBox, { responsive: true, displayModeBar: false });
 
-    // 4. Barras de Tendência Recente de Gases
+    // 4. Barras de Tendência
     const recentSlices = ordered.slice(-15);
     const barLabels = recentSlices.map((_, i) => `#${i + 1}`);
     const traceRawBar = {

@@ -1,0 +1,320 @@
+{% extends 'base.html' %}
+{% block title %}Compêndio Científico & Modo 4Dumb{% endblock %}
+
+{% block content %}
+<style>
+  /* Efeitos e Animações Especiais do Glossário */
+  @keyframes pulseGlow {
+    0% { box-shadow: 0 0 15px rgba(56, 189, 248, 0.2); }
+    50% { box-shadow: 0 0 32px rgba(56, 189, 248, 0.55); }
+    100% { box-shadow: 0 0 15px rgba(56, 189, 248, 0.2); }
+  }
+
+  @keyframes bubbleFloat {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+    100% { transform: translateY(0); }
+  }
+
+  .glossary-card {
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glossary-card:hover {
+    transform: translateY(-5px) scale(1.008);
+    border-color: var(--weather-sky) !important;
+    box-shadow: 0 16px 36px -8px rgba(2, 132, 199, 0.45) !important;
+  }
+
+  .dumb-bubble {
+    background: linear-gradient(135deg, rgba(2, 132, 199, 0.16), rgba(56, 189, 248, 0.08));
+    border-left: 4px solid var(--weather-sky);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-top: 14px;
+    animation: bubbleFloat 5s ease-in-out infinite;
+  }
+
+  .dumb-badge {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #ffffff;
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 3px 9px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+
+  .formula-box {
+    background: #040914;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 0.82rem;
+    color: #38bdf8;
+    overflow-x: auto;
+    margin: 10px 0;
+  }
+
+  .live-pill {
+    animation: pulseGlow 3s infinite;
+  }
+</style>
+
+<div class="glass-card">
+  <!-- Cabeçalho Principal -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 18px;">
+    <div>
+      <h2 style="font-size: 1.45rem; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 10px;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--weather-sky)" stroke-width="2.2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Compêndio Científico & Glossário Interativo
+      </h2>
+      <p style="font-size: 0.84rem; color: var(--text-muted);">Definições rigorosas, formulações matemáticas e explicações no <strong>Modo 4Dumb</strong> (didática pura para entendimento instantâneo).</p>
+    </div>
+
+    <div class="live-pill" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); padding: 8px 16px; border-radius: 999px; display: flex; align-items: center; gap: 8px;">
+      <span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+      <span style="font-size: 0.78rem; font-weight: 700; color: #34d399;">Atalaia Physics Engine Ativo</span>
+    </div>
+  </div>
+
+  <!-- SELETOR DE CATEGORIAS -->
+  <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 28px;">
+    <button class="btn btn-primary" onclick="filterGlossary('all')">Todos os Indicadores</button>
+    <button class="btn btn-outline" onclick="filterGlossary('psicro')">Psicrometria & Vapor</button>
+    <button class="btn btn-outline" onclick="filterGlossary('gas')">Qualidade do Ar & MQ-135</button>
+    <button class="btn btn-outline" onclick="filterGlossary('bio')">Conforto Térmico & Riscos</button>
+  </div>
+
+  <!-- GRADE DE CARDS -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px;">
+
+    <!-- CARD 1: PRESSÃO DE SATURAÇÃO (Es) -->
+    <div class="glass-card glossary-card" data-cat="psicro">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">Pressão de Saturação de Vapor (Es)</h3>
+        <span style="background: rgba(56, 189, 248, 0.15); color: var(--weather-sky); padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">hPa / mbar</span>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">
+        Capacidade máxima de vapor de água que uma massa de ar retém antes de condensar, função exclusiva da temperatura ambiente.
+      </p>
+
+      <div class="formula-box">
+        Es = 6.1078 * exp((17.27 * T) / (237.3 + T))
+      </div>
+
+      <div class="dumb-bubble">
+        <span class="dumb-badge">💡 Modo 4Dumb</span>
+        <p style="font-size: 0.78rem; color: #f8fafc; line-height: 1.45;">
+          <strong>Pense numa esponja:</strong> Quando o ar esquenta, a esponja cresce e cabe muito mais água sem pingar. Quando esfria, a esponja encolhe e a água começa a pingar (chuva ou orvalho).
+        </p>
+      </div>
+    </div>
+
+    <!-- CARD 2: PRESSÃO REAL DE VAPOR (Ea) -->
+    <div class="glass-card glossary-card" data-cat="psicro">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">Pressão Real de Vapor (Ea)</h3>
+        <span style="background: rgba(52, 211, 153, 0.15); color: var(--weather-humidity); padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">hPa</span>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">
+        Pressão parcial exercida estritamente pelas moléculas de vapor d'água presentes no ar no momento da amostragem.
+      </p>
+
+      <div class="formula-box">
+        Ea = Es * (RH / 100)
+      </div>
+
+      <div class="dumb-bubble">
+        <span class="dumb-badge">💡 Modo 4Dumb</span>
+        <p style="font-size: 0.78rem; color: #f8fafc; line-height: 1.45;">
+          É a quantidade de água que a sua esponja <strong>realmente está segurando agora</strong>. Se a esponja aguenta 10 copos de água (Es) e a umidade é 50%, ela tem 5 copos guardados (Ea).
+        </p>
+      </div>
+    </div>
+
+    <!-- CARD 3: DÉFICIT DE PRESSÃO DE VAPOR (VPD) -->
+    <div class="glass-card glossary-card" data-cat="psicro">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">Déficit de Pressão de Vapor (VPD)</h3>
+        <span style="background: rgba(251, 146, 60, 0.15); color: var(--weather-heat); padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">kPa</span>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">
+        Diferença entre a pressão de saturação e a pressão real. Mede a força secante da atmosfera e a taxa de evapotranspiração sobre organismos vivos.
+      </p>
+
+      <div class="formula-box">
+        VPD = (Es - Ea) / 10  (em kPa)
+      </div>
+
+      <div class="dumb-bubble">
+        <span class="dumb-badge">💡 Modo 4Dumb</span>
+        <p style="font-size: 0.78rem; color: #f8fafc; line-height: 1.45;">
+          É a <strong>"sede que o ar tem"</strong>. VPD alto suga água da sua garganta, pele e folhas das plantas (sensação de ar ressecado). VPD perto de zero não deixa nem toalha secar no varal.
+        </p>
+      </div>
+    </div>
+
+    <!-- CARD 4: PONTO DE ORVALHO (Td) -->
+    <div class="glass-card glossary-card" data-cat="psicro">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">Temperatura do Ponto de Orvalho (Td)</h3>
+        <span style="background: rgba(56, 189, 248, 0.15); color: var(--weather-sky); padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">°C</span>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">
+        Temperatura à qual o ar deve ser resfriado para que o vapor d'água atinja 100% de saturação e comece a condensar em orvalho ou nevoeiro.
+      </p>
+
+      <div class="formula-box">
+        alpha = (17.27 * T) / (237.3 + T) + ln(RH / 100)<br>
+        Td = (237.3 * alpha) / (17.27 - alpha)
+      </div>
+
+      <div class="dumb-bubble">
+        <span class="dumb-badge">💡 Modo 4Dumb</span>
+        <p style="font-size: 0.78rem; color: #f8fafc; line-height: 1.45;">
+          É a temperatura do <strong>copo de suco trincando de gelado que "sua" por fora</strong>. A parede do copo atinge o Td do ambiente e transforma o vapor invisível do ar em gotículas visíveis.
+        </p>
+      </div>
+    </div>
+
+    <!-- CARD 5: UMIDADE ABSOLUTA (AH) -->
+    <div class="glass-card glossary-card" data-cat="psicro">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">Umidade Absoluta (AH)</h3>
+        <span style="background: rgba(96, 165, 250, 0.15); color: var(--weather-rain); padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">g/m³</span>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">
+        Massa real de vapor de água em gramas presente em exatamente um metro cúbico de ar, derivada da equação dos gases perfeitos.
+      </p>
+
+      <div class="formula-box">
+        AH = (216.7 * Ea) / (T + 273.15)
+      </div>
+
+      <div class="dumb-bubble">
+        <span class="dumb-badge">💡 Modo 4Dumb</span>
+        <p style="font-size: 0.78rem; color: #f8fafc; line-height: 1.45;">
+          Se você isolar uma caixa de 1 metro de largura, altura e profundidade cheia de ar e tirar todo o vapor pesando numa balança, essa é a quantidade exata de gramas de água obtida.
+        </p>
+      </div>
+    </div>
+
+    <!-- CARD 6: SENSAÇÃO TÉRMICA (HEAT INDEX) -->
+    <div class="glass-card glossary-card" data-cat="bio">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">Sensação Térmica (Heat Index)</h3>
+        <span style="background: rgba(244, 63, 94, 0.15); color: var(--weather-storm); padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">°C</span>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">
+        Equação biometeorológica da NOAA que quantifica a dificuldade do corpo humano de resfriar-se por transpiração sob alta umidade.
+      </p>
+
+      <div class="formula-box">
+        HI = c1 + c2*T + c3*RH + c4*T*RH + c5*T² + c6*RH² + ...
+      </div>
+
+      <div class="dumb-bubble">
+        <span class="dumb-badge">💡 Modo 4Dumb</span>
+        <p style="font-size: 0.78rem; color: #f8fafc; line-height: 1.45;">
+          Nosso corpo resfria evaporando suor. Se o ar já estiver empapado de umidade, o suor fica parado na pele, o calor fica aprisionado e um termômetro de 30°C parece 38°C para quem está sentindo.
+        </p>
+      </div>
+    </div>
+
+    <!-- CARD 7: COMPENSAÇÃO HIGROTÉRMICA DO MQ-135 -->
+    <div class="glass-card glossary-card" data-cat="gas">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">Compensação Higrotérmica (MQ-135)</h3>
+        <span style="background: rgba(234, 179, 8, 0.15); color: var(--weather-drought); padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">Fator Adimensional</span>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">
+        Compensação matemática para descontar o desvio elétrico que variações térmicas e umidade causam no filme óxido semicondutor do sensor.
+      </p>
+
+      <div class="formula-box">
+        COR = 1.0 - 0.0075 * (T - 20) - 0.0035 * (RH - 33)<br>
+        Rs = RL * ((4095 - ADC) / ADC) / COR
+      </div>
+
+      <div class="dumb-bubble">
+        <span class="dumb-badge">💡 Modo 4Dumb</span>
+        <p style="font-size: 0.78rem; color: #f8fafc; line-height: 1.45;">
+          O sensor é sensível e confunde calor e mormaço com gases poluentes. O motor do Atalaia desconta o clima para revelar unicamente o gás real presente no ambiente.
+        </p>
+      </div>
+    </div>
+
+    <!-- CARD 8: ÍNDICE DE QUALIDADE DO AR (IAQ) -->
+    <div class="glass-card glossary-card" data-cat="gas">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">Índice de Qualidade do Ar (IAQ)</h3>
+        <span style="background: rgba(16, 185, 129, 0.15); color: var(--online); padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">0 a 500 IAQ</span>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">
+        Escala sintetizada padronizada para indicar a densidade de poluentes, fumaça, CO₂ e compostos orgânicos voláteis.
+      </p>
+
+      <div class="formula-box">
+        PPM_CO2 = 116.602 * ((Rs / R0) ^ -2.769) + 380.0
+      </div>
+
+      <div class="dumb-bubble">
+        <span class="dumb-badge">💡 Modo 4Dumb</span>
+        <p style="font-size: 0.78rem; color: #f8fafc; line-height: 1.45;">
+          O velocímetro de frescor:
+          <br>🟢 <strong>0 a 50:</strong> Ar puro de mata, respiração leve.
+          <br>🟡 <strong>100 a 150:</strong> Escritório fechado, início de bocejos e sonolência.
+          <br>🔴 <strong>&gt; 200:</strong> Fumaça ou ar saturado, precisa ventilar imediatamente.
+        </p>
+      </div>
+    </div>
+
+    <!-- CARD 9: RISCO FÚNGICO & BOLOR -->
+    <div class="glass-card glossary-card" data-cat="bio">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">Risco Fúngico & Bolor</h3>
+        <span style="background: rgba(244, 63, 94, 0.15); color: var(--weather-storm); padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">0 a 100%</span>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">
+        Modelagem combinada da janela ótima de reprodução de esporos (RH &gt; 65%, temperatura entre 20°C e 35°C) e compostos orgânicos.
+      </p>
+
+      <div class="formula-box">
+        Risco = [0.5 * Score_RH + 0.3 * Score_Temp + 0.2 * Score_Gases] * 100
+      </div>
+
+      <div class="dumb-bubble">
+        <span class="dumb-badge">💡 Modo 4Dumb</span>
+        <p style="font-size: 0.78rem; color: #f8fafc; line-height: 1.45;">
+          O alarme de mofo do guarda-roupa. Se passar de 65%, o mofo se espalha em menos de 48 horas nas roupas e paredes.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterGlossary(category) {
+  const cards = document.querySelectorAll('.glossary-card');
+  cards.forEach(card => {
+    if (category === 'all' || card.getAttribute('data-cat') === category) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+</script>
+{% endblock %}
